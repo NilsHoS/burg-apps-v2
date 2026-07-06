@@ -1,111 +1,110 @@
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+  /* nils_ — design tokens · Steen & inkt */
+  --steen:      #F2F3F1;   /* achtergrond */
+  --surface:    #FFFFFF;   /* kaarten, verhoogde vlakken */
+  --inkt:       #1B1D1F;   /* primaire tekst, primaire knoppen */
+  --inkt-60:    #5B5E5A;   /* gedempte tekst */
+  --lijn:       #DEE0DC;   /* randen, hairlines */
+  --blauwgrijs: #5C7285;   /* signatuur-accent — spaarzaam gebruiken */
+  --blauwgrijs-10: #E9EDF0; /* accent, zeer licht — vlakken/badges */
+  --mos:        #6E8271;   /* secundair — bevestiging/succes */
+  --mos-10:     #EAEEEA;
+  --brand:      #A9463C;   /* enige alarmkleur — waarschuwing/kritiek, nooit decoratief */
+  --brand-10:   #F5E9E7;
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+  --font-display: 'Newsreader', Georgia, serif;
+  --font-body: 'Inter', -apple-system, sans-serif;
+  --font-mono: 'IBM Plex Mono', monospace;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --space-1: 4px;  --space-2: 8px;  --space-3: 12px; --space-4: 16px;
+  --space-5: 24px; --space-6: 32px; --space-7: 48px; --space-8: 64px; --space-9: 96px;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
-  }
+  --radius-sm: 3px; --radius-md: 6px; --radius-lg: 12px;
+
+  color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
-  }
+/*
+  Dark mode — zelfde rollen, andere waarden. Wordt geactiveerd via
+  [data-theme="dark"] op <html> (zie src/lib/useTheme.js). We houden de
+  signatuur-, mos- en brand-tinten iets lichter zodat ze op een donker
+  vlak genoeg contrast houden, maar wisselen geen enkele token-rol om.
+*/
+html[data-theme='dark'] {
+  --steen:      #17181A;
+  --surface:    #1F2123;
+  --inkt:       #F2F3F1;
+  --inkt-60:    #9A9D98;
+  --lijn:       #33362F;
+  --blauwgrijs: #86A0B4;
+  --blauwgrijs-10: #253038;
+  --mos:        #8FA892;
+  --mos-10:     #212922;
+  --brand:      #D08277;
+  --brand-10:   #33201D;
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
-  }
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--steen);
 }
 
 body {
   margin: 0;
+  min-height: 100svh;
+  background: var(--steen);
+  color: var(--inkt);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.15s, color 0.15s;
 }
 
 #root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
   min-height: 100svh;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
 }
 
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--inkt);
+  margin: 0 0 var(--space-2);
 }
 
 h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
-  }
+  font-size: 32px;
+  letter-spacing: -0.2px;
 }
+
 h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
-  }
+  font-size: 22px;
 }
+
 p {
   margin: 0;
 }
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
+button, input, select {
+  font: inherit;
+  color: inherit;
 }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+a {
+  color: var(--blauwgrijs);
+}
+
+::selection {
+  background: var(--blauwgrijs-10);
+  color: var(--inkt);
 }
