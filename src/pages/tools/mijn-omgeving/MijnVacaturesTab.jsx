@@ -8,8 +8,12 @@ import DoorsturenModal from './DoorsturenModal'
 const SELECT_COLUMNS =
   'id, job_title, company_name, job_location, job_url, data_source, date_scraped, reviewed_at, enriched_at, company_website, company_phone, company_industry, company_linkedin, recruiter_name, recruiter_linkedin, recruiter_headline, company_address, salary, employment_type, industry, posted_at, contact_email, contact_phone, sales_status, sales_notes'
 
+// Filterwaarde voor vacatures zonder sales_status (nog geen keuze gemaakt).
+// Geen echte SALES_STATUSES-waarde, dus apart gehouden van getStatus().
+const NIEUW_FILTER = 'nieuw'
+
 function getStatus(job) {
-  return job.sales_status || 'Nieuwe kans'
+  return job.sales_status || null
 }
 
 function formatDate(value) {
@@ -29,7 +33,7 @@ export default function MijnVacaturesTab({ visible, employees, currentUserEmail,
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [filter, setFilter] = useState('all')
+  const [filter, setFilter] = useState(NIEUW_FILTER)
   const [doorsturenJob, setDoorsturenJob] = useState(null)
 
   const load = useCallback(
@@ -77,12 +81,18 @@ export default function MijnVacaturesTab({ visible, employees, currentUserEmail,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshToken])
 
-  const filtered = filter === 'all' ? jobs : jobs.filter((j) => getStatus(j) === filter)
+  const filtered =
+    filter === NIEUW_FILTER ? jobs.filter((j) => !getStatus(j)) : jobs.filter((j) => getStatus(j) === filter)
 
   const counts = {}
+  let nieuwCount = 0
   jobs.forEach((j) => {
     const s = getStatus(j)
-    counts[s] = (counts[s] || 0) + 1
+    if (!s) {
+      nieuwCount += 1
+    } else {
+      counts[s] = (counts[s] || 0) + 1
+    }
   })
 
   async function updateStatus(jobId, status) {
@@ -121,10 +131,10 @@ export default function MijnVacaturesTab({ visible, employees, currentUserEmail,
           <div className="btn-toggle-group mo-mv-summary">
             <button
               type="button"
-              className={filter === 'all' ? 'btn-toggle active' : 'btn-toggle'}
-              onClick={() => setFilter('all')}
+              className={filter === NIEUW_FILTER ? 'btn-toggle active' : 'btn-toggle'}
+              onClick={() => setFilter(NIEUW_FILTER)}
             >
-              Alle <span className="mo-count-pill">{jobs.length}</span>
+              Nieuwe vacatures <span className="mo-count-pill">{nieuwCount}</span>
             </button>
             {SALES_STATUSES.filter((s) => counts[s]).map((s) => (
               <button
