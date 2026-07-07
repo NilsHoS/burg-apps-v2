@@ -4,18 +4,10 @@
  * nogo_reason) geldig blijft en de n8n-webhook blijft werken.
  */
 
-// Volgorde exact zoals in de bron — nieuwe/onbekende bronnen komen achteraan.
-export const SALES_STATUSES = [
-  'On hold',
-  'Nieuwe kans',
-  'Toegevoegd aan Bullhorn',
-  'Gemaild',
-  'Lopend contact',
-  'Hot',
-  'Jobpull',
-  'Closed won',
-  'Closed loss',
-]
+// Bewust beperkt tot deze 2 (afwijkend van v1): bestaande vacatures met een
+// andere sales_status (bv. 'Hot') behouden die waarde in de database, maar
+// die optie is hier niet meer kiesbaar.
+export const SALES_STATUSES = ['Toegevoegd aan Bullhorn', 'Al bekend']
 
 export const NOGO_REASONS = [
   'Verkeerde sector',
