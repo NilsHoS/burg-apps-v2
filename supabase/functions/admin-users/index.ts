@@ -23,6 +23,49 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')
 const SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
 
+// Los Supabase-project (burg-jobs) waar Mijn Omgeving zijn recruitment-data
+// vandaan haalt (zie src/lib/burgJobsClient.js) — moet HANDMATIG als secret
+// gezet worden via `supabase secrets set`, wordt niet automatisch meegegeven
+// zoals de drie env-vars hierboven. Service-role nodig omdat `employees`
+// geen INSERT-policy voor anon/authenticated heeft.
+const BURG_JOBS_URL = Deno.env.get('BURG_JOBS_URL')
+const BURG_JOBS_SERVICE_ROLE_KEY = Deno.env.get('BURG_JOBS_SERVICE_ROLE_KEY')
+
+// Vaste defaults voor een nieuwe employees-rij — bewust hetzelfde als de
+// `determineSeniority()`-stub in de v2-client (altijd 'medior') en een
+// full-time fte_hours; via het Adminpaneel is hier nu geen invoerveld voor,
+// dus dit is een startpunt dat later handmatig bijgesteld kan worden.
+const DEFAULT_FTE_HOURS = 40
+const DEFAULT_SENIORITY_LEVELS = ['medior']
+
+/**
+ * Zet best-effort (nooit blokkerend voor account-aanmaak) een rij in de
+ * burg-jobs `employees`-tabel, zodat een nieuw v2-account meteen meedoet in
+ * Mijn Omgeving (aanwezigheid/swipe-verdeling) zonder handmatige Supabase-
+ * stap. `email` is UNIQUE in die tabel, dus een reeds bestaande medewerker
+ * (upsert met ignoreDuplicates) wordt overgeslagen i.p.v. overschreven.
+ */
+async function addBurgJobsEmployee(email, naam) {
+  if (!BURG_JOBS_URL || !BURG_JOBS_SERVICE_ROLE_KEY) {
+    console.warn('[admin-users] BURG_JOBS_URL/BURG_JOBS_SERVICE_ROLE_KEY ontbreken, employees-rij niet aangemaakt.')
+    return
+  }
+
+  const burgJobsAdmin = createClient(BURG_JOBS_URL, BURG_JOBS_SERVICE_ROLE_KEY)
+  const name = naam || email.split('@')[0]
+
+  const { error } = await burgJobsAdmin
+    .from('employees')
+    .upsert(
+      { name, email, fte_hours: DEFAULT_FTE_HOURS, seniority_levels: DEFAULT_SENIORITY_LEVELS },
+      { onConflict: 'email', ignoreDuplicates: true },
+    )
+
+  if (error) {
+    console.warn('[admin-users] employees-rij aanmaken mislukt:', error.message)
+  }
+}
+
 // Zonder deze headers blokkeert de browser het verzoek al bij de
 // CORS-preflight (OPTIONS), vóórdat de functie ooit wordt bereikt —
 // supabase-js meldt dat dan als een generieke "Failed to send a request
@@ -105,6 +148,8 @@ Deno.serve(async (req) => {
       if (Object.keys(updates).length > 0) {
         await adminClient.from('profiles').update(updates).eq('id', created.user.id)
       }
+
+      await addBurgJobsEmployee(email, naam)
 
       return jsonResponse({ success: true, userId: created.user.id })
     }
