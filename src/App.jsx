@@ -6,7 +6,10 @@ import { logToolUsage } from './lib/toolUsage'
 import RoleGate from './components/RoleGate'
 import RequireAuth from './components/RequireAuth'
 import Login from './pages/Login'
+import WachtwoordVergeten from './pages/WachtwoordVergeten'
+import WachtwoordResetten from './pages/WachtwoordResetten'
 import Dashboard from './pages/Dashboard'
+import Account from './pages/Account'
 import AdminPanel from './pages/AdminPanel'
 import GeenToegang from './pages/GeenToegang'
 import ToolPlaceholder from './pages/ToolPlaceholder'
@@ -61,12 +64,23 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/wachtwoord-vergeten" element={<WachtwoordVergeten />} />
+      <Route path="/wachtwoord-resetten" element={<WachtwoordResetten />} />
 
       <Route
         path="/"
         element={
           <RequireAuth>
             <Dashboard />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/account"
+        element={
+          <RequireAuth>
+            <Account />
           </RequireAuth>
         }
       />

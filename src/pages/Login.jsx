@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../lib/AuthProvider'
 
 /**
@@ -86,6 +86,10 @@ export default function Login() {
         <button type="submit" className="btn btn-primary" disabled={submitting}>
           {submitting ? 'Bezig met inloggen…' : 'Inloggen'}
         </button>
+
+        <p className="auth-links">
+          <Link to="/wachtwoord-vergeten">Wachtwoord vergeten?</Link>
+        </p>
       </form>
     </div>
   )

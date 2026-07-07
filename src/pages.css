@@ -259,6 +259,26 @@
   font-size: 12px;
 }
 
+.form-success {
+  margin: 0;
+  color: var(--mos);
+  font-size: 13px;
+}
+
+.auth-links {
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+}
+
+.auth-links a {
+  color: var(--blauwgrijs);
+}
+
+.account-card {
+  max-width: 360px;
+}
+
 /* ---------- Dashboard: secties + tool grid ---------- */
 
 .tool-section {

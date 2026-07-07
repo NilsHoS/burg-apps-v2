@@ -37,6 +37,8 @@ async function fetchProfile(userId) {
  *   loading,     // boolean — true tot de eerste sessie-check + profiel-fetch klaar is
  *   signIn,      // (email, password) => Promise<{ data, error }>
  *   signOut,     // () => Promise<{ error }>
+ *   resetPasswordForEmail, // (email) => Promise<{ data, error }> — stuurt reset-mail
+ *   updatePassword,        // (newPassword) => Promise<{ data, error }> — vereist actieve sessie
  * }
  */
 export function AuthProvider({ children }) {
@@ -88,6 +90,16 @@ export function AuthProvider({ children }) {
     return supabase.auth.signOut()
   }, [])
 
+  const resetPasswordForEmail = useCallback((email) => {
+    return supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/wachtwoord-resetten`,
+    })
+  }, [])
+
+  const updatePassword = useCallback((newPassword) => {
+    return supabase.auth.updateUser({ password: newPassword })
+  }, [])
+
   const value = {
     session,
     user: session?.user ?? null,
@@ -95,6 +107,8 @@ export function AuthProvider({ children }) {
     loading,
     signIn,
     signOut,
+    resetPasswordForEmail,
+    updatePassword,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

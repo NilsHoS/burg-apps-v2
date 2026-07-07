@@ -66,6 +66,9 @@ export default function Dashboard() {
               Adminpaneel
             </Link>
           )}
+          <Link to="/account" className="btn btn-secondary">
+            Mijn account
+          </Link>
           <button type="button" className="btn btn-secondary" onClick={() => signOut()}>
             Uitloggen
           </button>
