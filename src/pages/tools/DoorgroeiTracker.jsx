@@ -20,10 +20,13 @@ import { useAuth } from '../../lib/AuthProvider'
  */
 
 const DATA_URL =
-  'https://script.google.com/macros/s/AKfycbzt0qsIaPpWCpyR0-YLjynTDOcWmGtnWskEBTfLwIMUcN7hpdp_fKlQvrZJ0ErIIQaiTA/exec'
+  'https://script.google.com/macros/s/AKfycbzIicChs1q6DlRUyW-JHFm9lZHyBynl_zyAf8tczD85MJmnAHQT_LNzdkgoWZ29_IkWnQ/exec'
 
 function normalizeNaam(naam) {
-  return (naam || '').trim().toLowerCase()
+  // String(...) i.p.v. aannemen dat naam al tekst is — zie statusToneClass
+  // hieronder voor dezelfde reden (een kolomverschuiving in de bron kan hier
+  // een getal leveren, en .trim() bestaat niet op number).
+  return String(naam ?? '').trim().toLowerCase()
 }
 
 /**
@@ -219,9 +222,12 @@ export default function DoorgroeiTracker() {
       return { visibleRoster: [], visibleRecruitment: [], visibleSales: [], geenMatch: false }
     }
 
-    const roster = data.roster ?? []
-    const recruitment = data.recruitment ?? []
-    const sales = data.sales ?? []
+    // Array.isArray i.p.v. enkel ?? [] — garandeert ook dat de bron echt een
+    // array teruggaf (niet bv. een object of string), anders crasht de
+    // .filter/.map hieronder alsnog op "is not a function".
+    const roster = Array.isArray(data.roster) ? data.roster : []
+    const recruitment = Array.isArray(data.recruitment) ? data.recruitment : []
+    const sales = Array.isArray(data.sales) ? data.sales : []
 
     if (!isPlainUser) {
       return { visibleRoster: roster, visibleRecruitment: recruitment, visibleSales: sales, geenMatch: false }
@@ -308,7 +314,7 @@ export default function DoorgroeiTracker() {
                       entry={entry}
                       periodeLabel="maand"
                       doelPerPeriode={entry.doelPerPeriode}
-                      waarden={entry.months ?? []}
+                      waarden={Array.isArray(entry.months) ? entry.months : []}
                       key={`${entry.naam}-${i}`}
                     />
                   ))}
@@ -325,7 +331,7 @@ export default function DoorgroeiTracker() {
                       entry={entry}
                       periodeLabel="week"
                       doelPerPeriode={entry.doelPerWeek}
-                      waarden={entry.weeks ?? []}
+                      waarden={Array.isArray(entry.weeks) ? entry.weeks : []}
                       key={`${entry.naam}-${i}`}
                     />
                   ))}

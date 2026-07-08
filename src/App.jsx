@@ -5,6 +5,7 @@ import { TOOLS } from './lib/toolRegistry'
 import { logToolUsage } from './lib/toolUsage'
 import RoleGate from './components/RoleGate'
 import RequireAuth from './components/RequireAuth'
+import ErrorBoundary from './components/ErrorBoundary'
 import Login from './pages/Login'
 import WachtwoordVergeten from './pages/WachtwoordVergeten'
 import WachtwoordResetten from './pages/WachtwoordResetten'
@@ -51,7 +52,9 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <AppRoutes />
+        <ErrorBoundary>
+          <AppRoutes />
+        </ErrorBoundary>
       </BrowserRouter>
     </AuthProvider>
   )
