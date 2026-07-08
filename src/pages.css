@@ -2071,6 +2071,10 @@ a.tool-card:focus-visible {
   .mo-swipe-card {
     padding: var(--space-5);
   }
+
+  .proeftijd-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* ---------- Proeftijd Tracker ---------- */
@@ -2090,7 +2094,7 @@ a.tool-card:focus-visible {
 
 .proeftijd-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
   gap: var(--space-4);
 }
 
@@ -2196,7 +2200,7 @@ a.tool-card:focus-visible {
   gap: 3px;
   margin-bottom: var(--space-4);
   box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
-  flex-wrap: wrap;
+  overflow-x: auto;
 }
 
 .flap-board-done {
