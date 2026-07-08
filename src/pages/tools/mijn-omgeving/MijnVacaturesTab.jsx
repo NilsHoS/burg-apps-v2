@@ -29,7 +29,14 @@ function formatDate(value) {
  * (zichtbaarheid via `visible`-prop + CSS), zodat het geselecteerde filter
  * niet verloren gaat bij het wisselen naar Swipen en terug.
  */
-export default function MijnVacaturesTab({ visible, employees, currentUserEmail, refreshToken, onToast }) {
+export default function MijnVacaturesTab({
+  visible,
+  employees,
+  currentUserEmail,
+  refreshToken,
+  onToast,
+  onNieuwCountChange,
+}) {
   const [jobs, setJobs] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -94,6 +101,11 @@ export default function MijnVacaturesTab({ visible, employees, currentUserEmail,
       counts[s] = (counts[s] || 0) + 1
     }
   })
+
+  useEffect(() => {
+    onNieuwCountChange?.(nieuwCount)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nieuwCount])
 
   async function updateStatus(jobId, status) {
     setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, sales_status: status } : j)))

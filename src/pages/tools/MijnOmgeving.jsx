@@ -68,6 +68,7 @@ export default function MijnOmgeving() {
   const [swipeError, setSwipeError] = useState('')
   const [swipeVersion, setSwipeVersion] = useState(0)
   const [swipeRemaining, setSwipeRemaining] = useState(0)
+  const [vacaturesNieuwCount, setVacaturesNieuwCount] = useState(0)
 
   // Bumpt na elke Go-beslissing zodat Mijn Vacatures stil herlaadt, ook als
   // die tab niet actief is (matcht `loadMijnVacaturesBackground()` in de bron).
@@ -246,6 +247,7 @@ export default function MijnOmgeving() {
               onClick={() => setActiveTab('vacatures')}
             >
               Mijn Vacatures
+              <span className="mo-count-pill">{vacaturesNieuwCount}</span>
             </button>
           </div>
         )}
@@ -270,6 +272,7 @@ export default function MijnOmgeving() {
           currentUserEmail={currentUserEmail}
           refreshToken={vacaturesRefreshToken}
           onToast={showToast}
+          onNieuwCountChange={setVacaturesNieuwCount}
         />
       </main>
 
