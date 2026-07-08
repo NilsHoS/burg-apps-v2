@@ -324,11 +324,18 @@ grant execute on function uitgebreid_emails() to authenticated;
 
 -- ============================================
 -- PROEFTIJD TRACKER — gedeelde lijst kandidaten in proeftijd.
--- Bewust geen rol-restrictie: elke ingelogde gebruiker mag toevoegen,
--- lezen en verwijderen (zelfde toegangsniveau als de meeste tools).
+-- Bewust geen rol-restrictie: elke ingelogde gebruiker mag alle kandidaten
+-- lezen (gedeeld overzicht), maar alleen zijn eigen kandidaten toevoegen en
+-- verwijderen — de INSERT/DELETE-policies dwingen dat af via created_by,
+-- dus dit is geen client-side-only beperking.
 -- created_by is nullable met "on delete set null" om dezelfde reden als
 -- role_audit_log/tool_usage hierboven — een verwijderd profiel mag de
--- historische rijen niet blokkeren.
+-- historische rijen niet blokkeren. created_by_naam is een bewuste
+-- denormalisatie: RLS op profiles laat een 'user' alleen zijn eigen
+-- profiel lezen, dus een join zou voor de meeste mensen leeg tonen wie
+-- een collega heeft toegevoegd. De naam wordt daarom als tekst
+-- meegeschreven op het moment van toevoegen (blijft ook correct als de
+-- aanmaker later van naam verandert of verwijderd wordt).
 -- ============================================
 create table proeftijd_kandidaten (
   id uuid default gen_random_uuid() primary key,
@@ -336,6 +343,7 @@ create table proeftijd_kandidaten (
   start_datum date not null,
   duur_maanden int not null,
   created_by uuid references profiles(id) on delete set null,
+  created_by_naam text,
   created_at timestamptz not null default now()
 );
 
@@ -345,10 +353,10 @@ create policy "ingelogde gebruikers lezen proeftijd-kandidaten"
   on proeftijd_kandidaten for select
   using (auth.uid() is not null);
 
-create policy "ingelogde gebruikers voegen proeftijd-kandidaten toe"
+create policy "gebruiker voegt eigen proeftijd-kandidaten toe"
   on proeftijd_kandidaten for insert
-  with check (auth.uid() is not null);
+  with check (auth.uid() = created_by);
 
-create policy "ingelogde gebruikers verwijderen proeftijd-kandidaten"
+create policy "gebruiker verwijdert eigen proeftijd-kandidaten"
   on proeftijd_kandidaten for delete
-  using (auth.uid() is not null);
+  using (auth.uid() = created_by);

@@ -2092,6 +2092,10 @@ a.tool-card:focus-visible {
   margin: 0;
 }
 
+.proeftijd-filter {
+  margin-bottom: var(--space-5);
+}
+
 .proeftijd-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
@@ -2175,6 +2179,17 @@ a.tool-card:focus-visible {
 
 .proeftijd-card-done .proeftijd-meta {
   color: var(--mos);
+}
+
+.proeftijd-toegevoegd-door {
+  margin-top: var(--space-2);
+  font-size: 11px;
+  color: var(--inkt-60);
+}
+
+.proeftijd-card-done .proeftijd-toegevoegd-door {
+  color: var(--mos);
+  opacity: 0.8;
 }
 
 .months-badge {

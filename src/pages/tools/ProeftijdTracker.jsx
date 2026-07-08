@@ -7,11 +7,16 @@ import { fetchKandidaten, addKandidaat, removeKandidaat, subscribeToKandidaten }
  * Proeftijd Tracker — poort van de originele `proeftijd.html` (los,
  * localStorage-gebaseerd HTML-bestand in de oorspronkelijke BURG-Apps repo).
  * Belangrijkste verschil met de bron: data staat nu in Supabase
- * (`proeftijd_kandidaten`, RLS: elke ingelogde gebruiker mag lezen/toevoegen/
- * verwijderen) i.p.v. localStorage, zodat collega's dezelfde lijst zien i.p.v.
- * elk hun eigen losse lijstje op hun eigen apparaat. Geen limiet meer op het
- * aantal kandidaten (de bron had een harde grens van 6, puur ingegeven door
- * schermruimte in de losse HTML-versie).
+ * (`proeftijd_kandidaten`) i.p.v. localStorage, zodat collega's dezelfde
+ * lijst zien i.p.v. elk hun eigen losse lijstje op hun eigen apparaat. Geen
+ * limiet meer op het aantal kandidaten (de bron had een harde grens van 6,
+ * puur ingegeven door schermruimte in de losse HTML-versie).
+ *
+ * Toegang: iedereen leest alle kandidaten (toggle "Alle"/"Mijn kandidaten"
+ * is puur een client-side filter op dezelfde dataset), maar toevoegen en
+ * verwijderen is via RLS afgedwongen tot je eigen kandidaten
+ * (created_by = auth.uid()) — de verwijderknop wordt daarom ook alleen
+ * getoond op kaarten die je zelf hebt aangemaakt.
  */
 
 function getEndDate(k) {
@@ -99,7 +104,7 @@ function FlapBoard({ displayStr, done }) {
   )
 }
 
-function KandidaatCard({ kandidaat, onVerwijderen, confirmDeleteId, setConfirmDeleteId, verwijderBezig }) {
+function KandidaatCard({ kandidaat, magVerwijderen, onVerwijderen, confirmDeleteId, setConfirmDeleteId, verwijderBezig }) {
   const done = getEndDate(kandidaat) <= new Date()
   const displayStr = getDisplayString(kandidaat)
 
@@ -107,31 +112,32 @@ function KandidaatCard({ kandidaat, onVerwijderen, confirmDeleteId, setConfirmDe
     <div className={done ? 'section-card proeftijd-card proeftijd-card-done' : 'section-card proeftijd-card'}>
       <div className="proeftijd-card-header">
         <span className={done ? 'proeftijd-naam proeftijd-naam-done' : 'proeftijd-naam'}>{kandidaat.naam}</span>
-        {confirmDeleteId === kandidaat.id ? (
-          <div className="proeftijd-confirm-delete">
-            <span>Zeker?</span>
+        {magVerwijderen &&
+          (confirmDeleteId === kandidaat.id ? (
+            <div className="proeftijd-confirm-delete">
+              <span>Zeker?</span>
+              <button
+                type="button"
+                className="btn btn-danger"
+                disabled={verwijderBezig}
+                onClick={() => onVerwijderen(kandidaat.id)}
+              >
+                Ja
+              </button>
+              <button type="button" className="btn btn-ghost" onClick={() => setConfirmDeleteId(null)}>
+                Nee
+              </button>
+            </div>
+          ) : (
             <button
               type="button"
-              className="btn btn-danger"
-              disabled={verwijderBezig}
-              onClick={() => onVerwijderen(kandidaat.id)}
+              className="delete-btn"
+              title="Verwijderen"
+              onClick={() => setConfirmDeleteId(kandidaat.id)}
             >
-              Ja
+              ✕
             </button>
-            <button type="button" className="btn btn-ghost" onClick={() => setConfirmDeleteId(null)}>
-              Nee
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            className="delete-btn"
-            title="Verwijderen"
-            onClick={() => setConfirmDeleteId(kandidaat.id)}
-          >
-            ✕
-          </button>
-        )}
+          ))}
       </div>
 
       <FlapBoard displayStr={displayStr} done={done} />
@@ -148,18 +154,23 @@ function KandidaatCard({ kandidaat, onVerwijderen, confirmDeleteId, setConfirmDe
         <span className="months-badge">{kandidaat.duur_maanden} mnd</span>
         <span>Einde: {formatDatum(getEndDate(kandidaat))}</span>
       </div>
+
+      {kandidaat.created_by_naam && (
+        <div className="proeftijd-toegevoegd-door">Toegevoegd door {kandidaat.created_by_naam}</div>
+      )}
     </div>
   )
 }
 
 export default function ProeftijdTracker() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
 
   const [kandidaten, setKandidaten] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [verwijderBezig, setVerwijderBezig] = useState(false)
+  const [alleenEigen, setAlleenEigen] = useState(false)
 
   const [modalOpen, setModalOpen] = useState(false)
   const [naam, setNaam] = useState('')
@@ -208,6 +219,10 @@ export default function ProeftijdTracker() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kandidaten, tick])
 
+  const zichtbareKandidaten = alleenEigen
+    ? sortedKandidaten.filter((k) => k.created_by === user?.id)
+    : sortedKandidaten
+
   function openModal() {
     setNaam('')
     setStartDatum(new Date().toISOString().slice(0, 10))
@@ -230,7 +245,7 @@ export default function ProeftijdTracker() {
     setToevoegenBezig(true)
     setModalError('')
     try {
-      await addKandidaat({ naam: naamTrimmed, startDatum, duurMaanden, userId: user?.id })
+      await addKandidaat({ naam: naamTrimmed, startDatum, duurMaanden, userId: user?.id, userNaam: profile?.naam })
       setModalOpen(false)
       await load()
     } catch (err) {
@@ -271,10 +286,27 @@ export default function ProeftijdTracker() {
           <p className="page-intro">
             {loading
               ? 'Kandidaten laden…'
-              : `${kandidaten.length} kandi${kandidaten.length === 1 ? 'daat' : 'daten'} · bijgewerkt elke 30 seconden`}
+              : `${zichtbareKandidaten.length} kandi${zichtbareKandidaten.length === 1 ? 'daat' : 'daten'} · bijgewerkt elke 30 seconden`}
           </p>
           <button type="button" className="btn btn-primary" onClick={openModal}>
             + Kandidaat toevoegen
+          </button>
+        </div>
+
+        <div className="btn-toggle-group proeftijd-filter">
+          <button
+            type="button"
+            className={!alleenEigen ? 'btn-toggle active' : 'btn-toggle'}
+            onClick={() => setAlleenEigen(false)}
+          >
+            Alle kandidaten
+          </button>
+          <button
+            type="button"
+            className={alleenEigen ? 'btn-toggle active' : 'btn-toggle'}
+            onClick={() => setAlleenEigen(true)}
+          >
+            Mijn kandidaten
           </button>
         </div>
 
@@ -284,16 +316,21 @@ export default function ProeftijdTracker() {
           </p>
         )}
 
-        {!loading && !loadError && sortedKandidaten.length === 0 && (
-          <div className="idle-state">Nog geen kandidaten. Voeg er één toe om te beginnen.</div>
+        {!loading && !loadError && zichtbareKandidaten.length === 0 && (
+          <div className="idle-state">
+            {alleenEigen
+              ? 'Je hebt zelf nog geen kandidaten toegevoegd.'
+              : 'Nog geen kandidaten. Voeg er één toe om te beginnen.'}
+          </div>
         )}
 
-        {!loading && !loadError && sortedKandidaten.length > 0 && (
+        {!loading && !loadError && zichtbareKandidaten.length > 0 && (
           <div className="proeftijd-grid">
-            {sortedKandidaten.map((k) => (
+            {zichtbareKandidaten.map((k) => (
               <KandidaatCard
                 key={k.id}
                 kandidaat={k}
+                magVerwijderen={k.created_by === user?.id}
                 onVerwijderen={handleVerwijderen}
                 confirmDeleteId={confirmDeleteId}
                 setConfirmDeleteId={setConfirmDeleteId}

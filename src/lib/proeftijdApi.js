@@ -13,10 +13,14 @@ export async function fetchKandidaten() {
   return data
 }
 
-export async function addKandidaat({ naam, startDatum, duurMaanden, userId }) {
-  const { error } = await supabase
-    .from(TABLE)
-    .insert({ naam, start_datum: startDatum, duur_maanden: duurMaanden, created_by: userId })
+export async function addKandidaat({ naam, startDatum, duurMaanden, userId, userNaam }) {
+  const { error } = await supabase.from(TABLE).insert({
+    naam,
+    start_datum: startDatum,
+    duur_maanden: duurMaanden,
+    created_by: userId,
+    created_by_naam: userNaam,
+  })
 
   if (error) {
     throw new Error(error.message)
