@@ -168,6 +168,7 @@ export default function DoorgroeiTracker() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
+  const [pogingen, setPogingen] = useState(0)
 
   useEffect(() => {
     let isMounted = true
@@ -187,7 +188,16 @@ export default function DoorgroeiTracker() {
       })
       .catch((err) => {
         if (!isMounted) return
-        console.error('[DoorgroeiTracker] Kon data niet laden:', err)
+        console.error('[DoorgroeiTracker] Kon data niet laden (poging ' + (pogingen + 1) + '):', err)
+
+        // De bron (Google Apps Script) heeft soms een trage "cold start" —
+        // één stille herpoging lost dat meestal vanzelf op, voordat we de
+        // gebruiker met een foutmelding opzadelen.
+        if (pogingen === 0) {
+          setPogingen(1)
+          return
+        }
+
         setLoadError(err.message || 'Onbekende fout bij het laden van de data.')
         setLoading(false)
       })
@@ -195,7 +205,7 @@ export default function DoorgroeiTracker() {
     return () => {
       isMounted = false
     }
-  }, [])
+  }, [pogingen])
 
   const isPlainUser = profile?.role === 'user'
   const eigenNaamNormalized = normalizeNaam(profile?.naam)
@@ -247,9 +257,22 @@ export default function DoorgroeiTracker() {
         {loading && <p>Gegevens laden…</p>}
 
         {!loading && loadError && (
-          <p className="form-error" role="alert">
-            Kon gegevens niet laden: {loadError}
-          </p>
+          <div className="idle-state">
+            <p className="form-error" role="alert">
+              Kon gegevens niet laden: {loadError}
+            </p>
+            <p>De bron is soms traag — probeer het gerust nog een keer.</p>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                setLoadError('')
+                setPogingen(0)
+              }}
+            >
+              Opnieuw proberen
+            </button>
+          </div>
         )}
 
         {!loading && !loadError && isPlainUser && geenMatch && (
