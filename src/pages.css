@@ -2088,10 +2088,6 @@ a.tool-card:focus-visible {
   .mo-swipe-card {
     padding: var(--space-5);
   }
-
-  .proeftijd-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ---------- Proeftijd Tracker ---------- */
@@ -2117,6 +2113,16 @@ a.tool-card:focus-visible {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(460px, 1fr));
   gap: var(--space-4);
+}
+
+/* Moet ná de regel hierboven staan: bij gelijke specificiteit wint bij CSS
+   de regel die later in het bestand staat, ongeacht of hij in een
+   media-query zit — hiervoor stond deze override per ongeluk vóór de
+   basisregel, waardoor hij op elk schermformaat werd overschreven. */
+@media (max-width: 640px) {
+  .proeftijd-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .proeftijd-card {
