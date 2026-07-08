@@ -46,6 +46,11 @@ export default function AdminPanel() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   // naamDrafts: { [profileId]: string } — lokale invoerwaarde tijdens het bewerken
   const [naamDrafts, setNaamDrafts] = useState({})
+  // editingNaamId: welk profiel op dit moment het naam-veld open heeft staan
+  // (achter een potloodje i.p.v. altijd-open — namen worden elders exact
+  // gematcht, bv. Doorgroei Tracker/Proeftijd Tracker, dus een per ongeluk
+  // aangepaste naam breekt die koppeling stilletjes).
+  const [editingNaamId, setEditingNaamId] = useState(null)
   // naamSortAsc: sorteerrichting op voornaam in het gebruikersoverzicht (null = ongesorteerd, zoals opgehaald)
   const [naamSortAsc, setNaamSortAsc] = useState(true)
 
@@ -160,13 +165,28 @@ export default function AdminPanel() {
     }
   }
 
-  async function handleNaamBlur(profileId) {
+  function startNaamEdit(profileId, huidigeNaam) {
+    setNaamDrafts((current) => ({ ...current, [profileId]: huidigeNaam ?? '' }))
+    setRowErrors((current) => ({ ...current, [profileId]: null }))
+    setEditingNaamId(profileId)
+  }
+
+  function cancelNaamEdit(profileId) {
+    setNaamDrafts((current) => ({ ...current, [profileId]: undefined }))
+    setRowErrors((current) => ({ ...current, [profileId]: null }))
+    setEditingNaamId(null)
+  }
+
+  async function handleNaamOpslaan(profileId) {
     const previousProfile = profiles.find((p) => p.id === profileId)
     const previousNaam = previousProfile?.naam ?? ''
     const draft = (naamDrafts[profileId] ?? previousNaam).trim()
 
-    // Niets gewijzigd: geen RPC-call nodig.
-    if (draft === (previousNaam ?? '')) return
+    // Niets gewijzigd: geen RPC-call nodig, gewoon het veld weer sluiten.
+    if (draft === (previousNaam ?? '')) {
+      setEditingNaamId(null)
+      return
+    }
 
     setProfiles((current) => current.map((p) => (p.id === profileId ? { ...p, naam: draft } : p)))
     setRowErrors((current) => ({ ...current, [profileId]: null }))
@@ -174,6 +194,7 @@ export default function AdminPanel() {
 
     try {
       await setUserNaam(profileId, draft)
+      setEditingNaamId(null)
     } catch (err) {
       setProfiles((current) =>
         current.map((p) => (p.id === profileId ? { ...p, naam: previousNaam } : p)),
@@ -369,17 +390,53 @@ export default function AdminPanel() {
                   .map((profile) => (
                   <tr key={profile.id}>
                     <td data-label="Naam">
-                      <div className="text-input-wrap">
-                        <input
-                          type="text"
-                          value={naamDrafts[profile.id] ?? profile.naam ?? ''}
-                          disabled={pendingIds[profile.id]}
-                          onChange={(e) =>
-                            setNaamDrafts((current) => ({ ...current, [profile.id]: e.target.value }))
-                          }
-                          onBlur={() => handleNaamBlur(profile.id)}
-                        />
-                      </div>
+                      {editingNaamId === profile.id ? (
+                        <div className="admin-naam-edit">
+                          <div className="text-input-wrap">
+                            <input
+                              type="text"
+                              autoFocus
+                              value={naamDrafts[profile.id] ?? profile.naam ?? ''}
+                              disabled={pendingIds[profile.id]}
+                              onChange={(e) =>
+                                setNaamDrafts((current) => ({ ...current, [profile.id]: e.target.value }))
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleNaamOpslaan(profile.id)
+                                if (e.key === 'Escape') cancelNaamEdit(profile.id)
+                              }}
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            disabled={pendingIds[profile.id]}
+                            onClick={() => handleNaamOpslaan(profile.id)}
+                          >
+                            Opslaan
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-ghost"
+                            disabled={pendingIds[profile.id]}
+                            onClick={() => cancelNaamEdit(profile.id)}
+                          >
+                            Annuleren
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="admin-naam-display">
+                          <span>{profile.naam || '—'}</span>
+                          <button
+                            type="button"
+                            className="delete-btn"
+                            title="Naam wijzigen"
+                            onClick={() => startNaamEdit(profile.id, profile.naam)}
+                          >
+                            ✎
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td data-label="E-mail">{profile.email}</td>
                     <td data-label="Rol">
@@ -450,7 +507,7 @@ export default function AdminPanel() {
                       )}
                     </td>
                     {rowErrors[profile.id] && (
-                      <td colSpan={6} style={{ paddingTop: 0 }}>
+                      <td colSpan={9} style={{ paddingTop: 0 }}>
                         <p className="form-error form-error-inline" role="alert">
                           {rowErrors[profile.id]}
                         </p>

@@ -498,6 +498,24 @@ a.tool-card:focus-visible {
   color: var(--inkt);
 }
 
+.admin-naam-display {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.admin-naam-edit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.admin-naam-edit .text-input-wrap {
+  flex: 1;
+  min-width: 140px;
+}
+
 .admin-table select {
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-sm);
