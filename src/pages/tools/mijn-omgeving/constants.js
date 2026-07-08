@@ -1,5 +1,5 @@
 /**
- * Vaste lijsten en instellingen voor Mijn Omgeving, 1-op-1 overgenomen uit
+ * Vaste lijsten en instellingen voor Kansen Swiper, 1-op-1 overgenomen uit
  * de bron (`mijn-omgeving.html`) zodat bestaande data (sales_status,
  * nogo_reason) geldig blijft en de n8n-webhook blijft werken.
  */

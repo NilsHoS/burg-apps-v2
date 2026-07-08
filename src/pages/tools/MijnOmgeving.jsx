@@ -13,7 +13,7 @@ const SWIPE_COLUMNS =
   'id,job_title,company_name,job_location,job_url,data_source,date_scraped,posted_at,salary,employment_type,industry,recruiter_name,recruiter_headline,recruiter_linkedin,company_website,job_description,contact_name,contact_email,contact_phone'
 
 /**
- * Mijn Omgeving — Fase 1: Swipen + Mijn Vacatures + aanwezigheidswidget.
+ * Kansen Swiper (voorheen "Mijn Omgeving") — Fase 1: Swipen + Mijn Vacatures + aanwezigheidswidget.
  * Second Check / Analytics / Monitoring zijn bewust buiten scope (zie
  * projectinstructie); de tab-switcher hieronder is opzettelijk generiek
  * gehouden (een array van tabs, geen aannames over precies 2 stuks) zodat
@@ -212,7 +212,7 @@ export default function MijnOmgeving() {
     <div className="page">
       <header className="topbar">
         <div>
-          <h1>Mijn Omgeving</h1>
+          <h1>Kansen Swiper</h1>
         </div>
         <div className="topbar-actions">
           <Link to="/" className="btn btn-secondary">

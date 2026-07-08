@@ -90,8 +90,8 @@ export async function setUserNaam(targetId, naam) {
 }
 
 /**
- * Zet de "Mijn Omgeving uitgebreid"-vlag — los van de rol-hiërarchie,
- * bepaalt of iemand binnen Mijn Omgeving de extra tabbladen (Second
+ * Zet de "Kansen Swiper uitgebreid"-vlag — los van de rol-hiërarchie,
+ * bepaalt of iemand binnen Kansen Swiper de extra tabbladen (Second
  * Check/Analytics/Monitoring) te zien krijgt. Gaat via de
  * `set_mijn_omgeving_uitgebreid` Postgres-functie (security definer,
  * admin-only).

@@ -319,7 +319,7 @@ export default function AdminPanel() {
                   <th>E-mail</th>
                   <th>Rol</th>
                   <th>Actief</th>
-                  <th>Mijn Omgeving uitgebreid</th>
+                  <th>Kansen Swiper uitgebreid</th>
                   <th>Verwijderen</th>
                 </tr>
               </thead>
@@ -364,7 +364,7 @@ export default function AdminPanel() {
                         {profile.actief ? 'Actief' : 'Inactief'}
                       </button>
                     </td>
-                    <td data-label="Mijn Omgeving uitgebreid">
+                    <td data-label="Kansen Swiper uitgebreid">
                       <label style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                         <input
                           type="checkbox"

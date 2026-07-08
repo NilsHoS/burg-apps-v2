@@ -1493,7 +1493,7 @@ a.tool-card:focus-visible {
   }
 }
 
-/* ---------- Mijn Omgeving: aanwezigheid, tabs, swipen, mijn vacatures ---------- */
+/* ---------- Kansen Swiper: aanwezigheid, tabs, swipen, mijn vacatures ---------- */
 /* Gebruikt door MijnOmgeving.jsx en src/pages/tools/mijn-omgeving/*.
    Zelfde regels als de rest van dit bestand: alleen var(--token), geen
    losse hex/px buiten de schaal in :root. De modal-scrim hieronder is de

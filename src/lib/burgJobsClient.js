@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js'
  * Dit is NIET hetzelfde project als het v2-rollen-systeem in
  * ./supabaseClient.js. Gebruikt uitsluitend de publishable/anon-key: er is
  * bewust geen aparte login-sessie op dit project (v2-gebruikers zijn al
- * ingelogd via het v2-project; identiteit binnen "Mijn Omgeving" wordt
+ * ingelogd via het v2-project; identiteit binnen "Kansen Swiper" wordt
  * bepaald door `profile.email` te matchen tegen `employees.email` /
  * `jobs.assigned_to`, niet door een tweede auth-sessie).
  */
@@ -16,7 +16,7 @@ const burgJobsAnonKey = import.meta.env.VITE_BURG_JOBS_ANON_KEY
 if (!burgJobsUrl || !burgJobsAnonKey) {
   console.warn(
     '[burgJobsClient] VITE_BURG_JOBS_URL en/of VITE_BURG_JOBS_ANON_KEY ontbreken. ' +
-      'Mijn Omgeving kan dan geen data ophalen.',
+      'Kansen Swiper kan dan geen data ophalen.',
   )
 }
 
