@@ -18,6 +18,10 @@ function toolNaam(toolId) {
   return TOOLS.find((t) => t.id === toolId)?.naam ?? toolId
 }
 
+function voornaam(naam) {
+  return (naam || '').trim().split(' ')[0].toLowerCase()
+}
+
 function fmtDatum(isoString) {
   if (!isoString) return '—'
   return new Date(isoString).toLocaleString('nl-NL', {
@@ -41,6 +45,8 @@ export default function AdminPanel() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   // naamDrafts: { [profileId]: string } — lokale invoerwaarde tijdens het bewerken
   const [naamDrafts, setNaamDrafts] = useState({})
+  // naamSortAsc: sorteerrichting op voornaam in het gebruikersoverzicht (null = ongesorteerd, zoals opgehaald)
+  const [naamSortAsc, setNaamSortAsc] = useState(true)
 
   const [usageCounts, setUsageCounts] = useState([])
   const [usageLoading, setUsageLoading] = useState(true)
@@ -315,7 +321,16 @@ export default function AdminPanel() {
             <table className="admin-table">
               <thead>
                 <tr>
-                  <th>Naam</th>
+                  <th>
+                    <button
+                      type="button"
+                      className="admin-table-sort-btn"
+                      onClick={() => setNaamSortAsc((current) => !current)}
+                      title="Sorteer op voornaam"
+                    >
+                      Naam {naamSortAsc ? '▲' : '▼'}
+                    </button>
+                  </th>
                   <th>E-mail</th>
                   <th>Rol</th>
                   <th>Actief</th>
@@ -324,7 +339,12 @@ export default function AdminPanel() {
                 </tr>
               </thead>
               <tbody>
-                {profiles.map((profile) => (
+                {[...profiles]
+                  .sort((a, b) => {
+                    const cmp = voornaam(a.naam).localeCompare(voornaam(b.naam), 'nl')
+                    return naamSortAsc ? cmp : -cmp
+                  })
+                  .map((profile) => (
                   <tr key={profile.id}>
                     <td data-label="Naam">
                       <div className="text-input-wrap">
