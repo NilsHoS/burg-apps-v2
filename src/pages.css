@@ -2471,6 +2471,14 @@ a.tool-card:focus-visible {
   margin: 0;
   font-size: 14px;
   color: var(--inkt);
+  font-weight: 600;
+}
+
+.gpb-stelling-voorbeeld {
+  margin: 0;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--inkt-60);
 }
 
 .gpb-doel-row {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { fetchAllProfiles } from '../../../lib/adminApi'
-import { createGpbBeoordeling, fetchDoelen, keurGpbGoed, maakGpbDefinitief } from '../../../lib/gpbApi'
+import { createGpbBeoordeling, deleteGpbBeoordeling, fetchDoelen, keurGpbGoed, maakGpbDefinitief } from '../../../lib/gpbApi'
 import { AFDELINGEN, NIVEAUS, STATUS_LABELS } from './constants'
 import GpbRapport from './GpbRapport'
 
@@ -21,6 +21,7 @@ export default function GpbBeheerOverzicht({ beoordelingen, onVerversen, showToa
   const [doelen, setDoelen] = useState([])
   const [bezig, setBezig] = useState(false)
   const [fout, setFout] = useState('')
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
 
   const [medewerkerId, setMedewerkerId] = useState('')
   const [leidinggevendeId, setLeidinggevendeId] = useState('')
@@ -101,6 +102,22 @@ export default function GpbBeheerOverzicht({ beoordelingen, onVerversen, showToa
     }
   }
 
+  async function handleVerwijderen(id) {
+    setBezig(true)
+    setFout('')
+    try {
+      await deleteGpbBeoordeling(id)
+      setConfirmDeleteId(null)
+      setGeselecteerdId(null)
+      await onVerversen()
+      showToast?.('Beoordeling verwijderd.')
+    } catch (err) {
+      setFout(err.message)
+    } finally {
+      setBezig(false)
+    }
+  }
+
   const geselecteerd = beoordelingen.find((b) => b.id === geselecteerdId)
 
   if (geselecteerd) {
@@ -133,6 +150,21 @@ export default function GpbBeheerOverzicht({ beoordelingen, onVerversen, showToa
                   Definitief maken
                 </button>
               )}
+              {confirmDeleteId === geselecteerd.id ? (
+                <>
+                  <span className="control-label">Weet je het zeker?</span>
+                  <button type="button" className="btn btn-danger" disabled={bezig} onClick={() => handleVerwijderen(geselecteerd.id)}>
+                    Ja, verwijderen
+                  </button>
+                  <button type="button" className="btn btn-ghost" onClick={() => setConfirmDeleteId(null)}>
+                    Annuleren
+                  </button>
+                </>
+              ) : (
+                <button type="button" className="btn btn-danger" onClick={() => setConfirmDeleteId(geselecteerd.id)}>
+                  Verwijderen
+                </button>
+              )}
             </>
           }
         />
@@ -142,6 +174,12 @@ export default function GpbBeheerOverzicht({ beoordelingen, onVerversen, showToa
 
   return (
     <div>
+      {fout && (
+        <p className="form-error" role="alert">
+          {fout}
+        </p>
+      )}
+
       <div className="section-card">
         <p className="calc-section-label">Nieuwe beoordeling aanmaken</p>
         <div className="form-grid-2">
@@ -227,6 +265,7 @@ export default function GpbBeheerOverzicht({ beoordelingen, onVerversen, showToa
               <th>Status</th>
               <th>Medewerker ingevuld</th>
               <th>Leidinggevende ingevuld</th>
+              <th>Verwijderen</th>
             </tr>
           </thead>
           <tbody>
@@ -240,6 +279,22 @@ export default function GpbBeheerOverzicht({ beoordelingen, onVerversen, showToa
                 <td data-label="Status">{STATUS_LABELS[b.status]}</td>
                 <td data-label="Medewerker ingevuld">{fmtDatum(b.medewerker_ingevuld_at)}</td>
                 <td data-label="Leidinggevende ingevuld">{fmtDatum(b.leidinggevende_ingevuld_at)}</td>
+                <td data-label="Verwijderen" onClick={(e) => e.stopPropagation()}>
+                  {confirmDeleteId === b.id ? (
+                    <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+                      <button type="button" className="btn btn-danger" disabled={bezig} onClick={() => handleVerwijderen(b.id)}>
+                        Ja
+                      </button>
+                      <button type="button" className="btn btn-ghost" onClick={() => setConfirmDeleteId(null)}>
+                        Nee
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" className="btn btn-danger" onClick={() => setConfirmDeleteId(b.id)}>
+                      Verwijderen
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

@@ -24,7 +24,8 @@ export default function GpbInvulForm({ titel, afdeling, functieniveau, toontDoel
   const [doelen, setDoelen] = useState(toontDoelen ? legeDoelen() : [])
   const [fout, setFout] = useState('')
 
-  const stellingenPerPijler = STELLINGEN[afdeling]?.[functieniveau] ?? PIJLERS.map(() => ['—', '—', '—'])
+  const stellingenPerPijler =
+    STELLINGEN[afdeling]?.[functieniveau] ?? PIJLERS.map(() => [{ tekst: '—', voorbeeld: '' }, { tekst: '—', voorbeeld: '' }, { tekst: '—', voorbeeld: '' }])
 
   function setScore(pijlerIdx, stellingIdx, score) {
     setAntwoorden((current) =>
@@ -82,9 +83,10 @@ export default function GpbInvulForm({ titel, afdeling, functieniveau, toontDoel
             Pijler {pijlerIdx + 1}: {pijlerNaam}
           </p>
 
-          {stellingenPerPijler[pijlerIdx].map((stellingTekst, stellingIdx) => (
+          {stellingenPerPijler[pijlerIdx].map((stelling, stellingIdx) => (
             <div className="gpb-stelling" key={stellingIdx}>
-              <p className="gpb-stelling-tekst">{stellingTekst}</p>
+              <p className="gpb-stelling-tekst">{stelling.tekst}</p>
+              {stelling.voorbeeld && <p className="gpb-stelling-voorbeeld">{stelling.voorbeeld}</p>}
 
               <div className="control-row">
                 <span className="control-label">Score</span>

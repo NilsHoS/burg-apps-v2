@@ -51,6 +51,15 @@ export async function createGpbBeoordeling({ medewerkerId, medewerkerNaam, leidi
   return data
 }
 
+/** Alleen HR/admin (afgedwongen via RLS) — verwijdert ook de gekoppelde doelen (cascade). */
+export async function deleteGpbBeoordeling(beoordelingId) {
+  const { error } = await supabase.from('gpb_beoordelingen').delete().eq('id', beoordelingId)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+}
+
 export async function submitGpbMedewerker(beoordelingId, antwoorden, doelen) {
   const { error } = await supabase.rpc('submit_gpb_medewerker', {
     p_beoordeling_id: beoordelingId,

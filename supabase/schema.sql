@@ -468,6 +468,14 @@ create policy "leidinggevende leest toegewezen gpb-beoordelingen"
   on gpb_beoordelingen for select
   using (auth.uid() = leidinggevende_id);
 
+-- Verwijderen is een simpele, niet-toestandsafhankelijke actie (in
+-- tegenstelling tot invullen/goedkeuren/definitief maken hierboven), dus
+-- hiervoor volstaat een gewone RLS-policy i.p.v. een RPC. gpb_doelen
+-- ruimt zichzelf op via de "on delete cascade" op beoordeling_id.
+create policy "hr/admin verwijderen gpb-beoordelingen"
+  on gpb_beoordelingen for delete
+  using (my_role() in ('hr', 'admin'));
+
 create policy "leest gpb-doelen bij toegankelijke beoordeling"
   on gpb_doelen for select
   using (
