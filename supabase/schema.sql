@@ -580,9 +580,9 @@ grant execute on function submit_gpb_medewerker(uuid, jsonb, jsonb) to authentic
 
 -- ============================================
 -- GPB: leidinggevende dient zijn beoordeling in. Mag alleen de toegewezen
--- leidinggevende, alleen nadat de medewerker heeft ingevuld (matcht het
--- principes-document: "Leidinggevende ontvangt een aparte uitnodiging NA
--- invullen door de medewerker"), en alleen één keer.
+-- leidinggevende, en alleen één keer. Bewust ONAFHANKELIJK van de
+-- medewerker-zelfevaluatie (niet meer sequentieel) — medewerker en
+-- leidinggevende kunnen dit simultaan, los van elkaar invullen.
 -- ============================================
 create or replace function submit_gpb_leidinggevende(
   p_beoordeling_id uuid,
@@ -603,9 +603,6 @@ begin
   end if;
   if auth.uid() <> b.leidinggevende_id then
     raise exception 'Alleen de toegewezen leidinggevende mag dit invullen';
-  end if;
-  if b.medewerker_ingevuld_at is null then
-    raise exception 'Medewerker moet eerst zijn zelfevaluatie indienen';
   end if;
   if b.leidinggevende_ingevuld_at is not null then
     raise exception 'Beoordeling is al ingediend';

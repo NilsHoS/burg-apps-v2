@@ -104,8 +104,11 @@ export async function maakGpbDefinitief(beoordelingId) {
  * teller-badge op de dashboard-tegel, en voor de "Team"-tabtelling in de
  * tool zelf. Zelfde rolverdeling als GpbBeoordelingstool.jsx: hr/admin telt
  * concept-beoordelingen die klaarstaan voor goedkeuring, iedereen anders
- * telt zijn eigen nog-in-te-vullen zelfevaluatie + toegewezen teamleden die
- * wachten op zijn/haar beoordeling.
+ * telt zijn eigen nog-in-te-vullen zelfevaluatie + toegewezen teamleden waar
+ * hij/zij als leidinggevende nog niet heeft ingevuld. Medewerker en
+ * leidinggevende vullen onafhankelijk van elkaar in (zie
+ * submit_gpb_leidinggevende), dus dat laatste telt mee ongeacht of de
+ * medewerker zelf al heeft ingevuld.
  */
 export function telOpenstaandeGpbActies(beoordelingen, userId, role) {
   if (role === 'hr' || role === 'admin') {
@@ -120,7 +123,7 @@ export function telOpenstaandeGpbActies(beoordelingen, userId, role) {
   if (eigen && !eigen.medewerker_ingevuld_at) aantal += 1
 
   aantal += beoordelingen.filter(
-    (b) => b.leidinggevende_id === userId && b.medewerker_ingevuld_at && !b.leidinggevende_ingevuld_at,
+    (b) => b.leidinggevende_id === userId && !b.leidinggevende_ingevuld_at,
   ).length
 
   return aantal

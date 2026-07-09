@@ -103,7 +103,7 @@ export default function GpbBeoordelingstool() {
               <button type="button" className={tab === 'team' ? 'mo-tab-btn active' : 'mo-tab-btn'} onClick={() => setTab('team')}>
                 Team
                 <span className="mo-count-pill">
-                  {teamBeoordelingen.filter((b) => b.medewerker_ingevuld_at && !b.leidinggevende_ingevuld_at).length}
+                  {teamBeoordelingen.filter((b) => !b.leidinggevende_ingevuld_at).length}
                 </span>
               </button>
             )}
@@ -208,11 +208,14 @@ function TeamBlok({ beoordelingen, onIngediend, showToast }) {
           </p>
         )}
 
-        {!geselecteerd.medewerker_ingevuld_at && (
-          <div className="idle-state">{geselecteerd.medewerker_naam} heeft zijn/haar zelfevaluatie nog niet ingediend.</div>
+        {!geselecteerd.medewerker_ingevuld_at && !geselecteerd.leidinggevende_ingevuld_at && (
+          <div className="idle-state">
+            {geselecteerd.medewerker_naam} heeft zijn/haar zelfevaluatie nog niet ingediend — je kunt je eigen
+            beoordeling hieronder alvast onafhankelijk invullen.
+          </div>
         )}
 
-        {geselecteerd.medewerker_ingevuld_at && !geselecteerd.leidinggevende_ingevuld_at && (
+        {!geselecteerd.leidinggevende_ingevuld_at && (
           <GpbInvulForm
             titel={`Beoordeling voor ${geselecteerd.medewerker_naam}`}
             afdeling={geselecteerd.afdeling}
@@ -253,11 +256,11 @@ function TeamBlok({ beoordelingen, onIngediend, showToast }) {
             {b.afdeling} · niveau {b.functieniveau} · {b.periode}
           </span>
           <span className="tool-card-hint">
-            {!b.medewerker_ingevuld_at
-              ? 'Wacht op zelfevaluatie'
-              : b.leidinggevende_ingevuld_at
-                ? 'Al ingediend'
-                : 'Klaar om te beoordelen'}
+            {b.leidinggevende_ingevuld_at
+              ? 'Al ingediend'
+              : b.medewerker_ingevuld_at
+                ? 'Klaar om te beoordelen'
+                : 'Klaar om te beoordelen (zelfevaluatie loopt nog)'}
           </span>
         </button>
       ))}
