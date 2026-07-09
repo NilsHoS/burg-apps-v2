@@ -175,7 +175,7 @@ export default function ProeftijdTracker() {
   const [modalOpen, setModalOpen] = useState(false)
   const [naam, setNaam] = useState('')
   const [startDatum, setStartDatum] = useState(() => new Date().toISOString().slice(0, 10))
-  const [duurMaanden, setDuurMaanden] = useState(2)
+  const [duurMaanden, setDuurMaanden] = useState(1)
   const [toevoegenBezig, setToevoegenBezig] = useState(false)
   const [modalError, setModalError] = useState('')
 
@@ -226,7 +226,7 @@ export default function ProeftijdTracker() {
   function openModal() {
     setNaam('')
     setStartDatum(new Date().toISOString().slice(0, 10))
-    setDuurMaanden(2)
+    setDuurMaanden(1)
     setModalError('')
     setModalOpen(true)
   }
@@ -372,7 +372,7 @@ export default function ProeftijdTracker() {
             <div className="field">
               <span>Duur proeftijd</span>
               <div className="btn-group">
-                {[1, 2, 3].map((m) => (
+                {[1, 2].map((m) => (
                   <button
                     type="button"
                     key={m}
