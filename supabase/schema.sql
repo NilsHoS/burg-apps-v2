@@ -394,3 +394,289 @@ as $$
 $$;
 
 grant execute on function admin_last_sign_ins() to authenticated;
+
+-- ============================================
+-- GPB BEOORDELINGSTOOL — halfjaarlijkse beoordelingen.
+--
+-- Bewust geen invite-links/tokens: iedereen heeft al een burg-apps-v2-
+-- account, dus medewerker/leidinggevende loggen gewoon in en zien hun
+-- openstaande beoordeling in de tool zelf (geen externe e-mail nodig).
+--
+-- Rollen binnen déze tool zijn LOS van de algemene ROLE_HIERARCHY-ladder
+-- (net als bij Kansen Swiper's mijn_omgeving_uitgebreid): een manager ziet
+-- hier alleen zijn eigen team als leidinggevende, HR/admin ziet alles —
+-- dat is geen oplopende trap maar drie aparte populaties.
+--
+-- Net als bij `profiles` is er BEWUST geen UPDATE-policy: elke wijziging
+-- (invullen, goedkeuren, definitief maken) loopt via een SECURITY DEFINER
+-- functie die zelf controleert of de aanroeper de juiste persoon is én of
+-- de beoordeling in de juiste status staat — zelfde patroon als
+-- change_user_role().
+-- ============================================
+create type gpb_status as enum ('concept', 'goedgekeurd', 'definitief');
+
+create table gpb_beoordelingen (
+  id uuid default gen_random_uuid() primary key,
+  medewerker_id uuid references profiles(id) on delete set null,
+  -- Snapshot van de naam op aanmaakmoment: blijft leesbaar in het
+  -- overzicht/rapport ook als het profiel later verwijderd wordt.
+  medewerker_naam text not null,
+  leidinggevende_id uuid references profiles(id) on delete set null,
+  afdeling text not null,
+  functieniveau int not null,
+  periode text not null,
+  status gpb_status not null default 'concept',
+
+  -- Vaste vorm (6 pijlers x 3 stellingen), vandaar jsonb i.p.v. een losse
+  -- tabel: [{ scores: [n,n,n], toelichtingen: [t,t,t] }, ...] x 6.
+  medewerker_antwoorden jsonb,
+  medewerker_ingevuld_at timestamptz,
+  leidinggevende_antwoorden jsonb,
+  leidinggevende_ingevuld_at timestamptz,
+
+  created_by uuid references profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  goedgekeurd_by uuid references profiles(id) on delete set null,
+  goedgekeurd_at timestamptz,
+  definitief_at timestamptz
+);
+
+-- Doelen krijgen wél een eigen tabel (i.p.v. jsonb): moeten over
+-- beoordelingsrondes heen terug te vinden zijn ("agenda voor het
+-- vervolggesprek"), dat vraagt om een normale, query-bare rij per doel.
+create table gpb_doelen (
+  id uuid default gen_random_uuid() primary key,
+  beoordeling_id uuid not null references gpb_beoordelingen(id) on delete cascade,
+  omschrijving text not null,
+  pijler int not null,
+  deadline date not null,
+  created_at timestamptz not null default now()
+);
+
+alter table gpb_beoordelingen enable row level security;
+alter table gpb_doelen enable row level security;
+
+create policy "hr/admin lezen alle gpb-beoordelingen"
+  on gpb_beoordelingen for select
+  using (my_role() in ('hr', 'admin'));
+
+create policy "medewerker leest eigen gpb-beoordeling"
+  on gpb_beoordelingen for select
+  using (auth.uid() = medewerker_id);
+
+create policy "leidinggevende leest toegewezen gpb-beoordelingen"
+  on gpb_beoordelingen for select
+  using (auth.uid() = leidinggevende_id);
+
+create policy "leest gpb-doelen bij toegankelijke beoordeling"
+  on gpb_doelen for select
+  using (
+    exists (
+      select 1 from gpb_beoordelingen b
+      where b.id = gpb_doelen.beoordeling_id
+        and (
+          my_role() in ('hr', 'admin')
+          or b.medewerker_id = auth.uid()
+          or b.leidinggevende_id = auth.uid()
+        )
+    )
+  );
+
+-- ============================================
+-- GPB: aanmaken (alleen HR/admin — de "Dashboard-gebruiker"-rol uit het
+-- principes-document).
+-- ============================================
+create or replace function create_gpb_beoordeling(
+  p_medewerker_id uuid,
+  p_medewerker_naam text,
+  p_leidinggevende_id uuid,
+  p_afdeling text,
+  p_functieniveau int,
+  p_periode text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  nieuw_id uuid;
+begin
+  if my_role() not in ('hr', 'admin') then
+    raise exception 'Alleen HR of admin mag een beoordeling aanmaken';
+  end if;
+
+  insert into gpb_beoordelingen (medewerker_id, medewerker_naam, leidinggevende_id, afdeling, functieniveau, periode)
+  values (p_medewerker_id, p_medewerker_naam, p_leidinggevende_id, p_afdeling, p_functieniveau, p_periode)
+  returning id into nieuw_id;
+
+  return nieuw_id;
+end;
+$$;
+
+grant execute on function create_gpb_beoordeling(uuid, text, uuid, text, int, text) to authenticated;
+
+-- ============================================
+-- GPB: medewerker dient zijn zelfevaluatie + 3 doelen in. Mag alleen de
+-- toegewezen medewerker, en alleen zolang hij nog niet eerder heeft
+-- ingediend (medewerker_ingevuld_at is null) — voorkomt dat een eerdere
+-- inzending overschreven wordt.
+-- ============================================
+create or replace function submit_gpb_medewerker(
+  p_beoordeling_id uuid,
+  p_antwoorden jsonb,
+  p_doelen jsonb  -- [{ omschrijving, pijler, deadline }, ...] x 3
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  b gpb_beoordelingen;
+  doel jsonb;
+begin
+  select * into b from gpb_beoordelingen where id = p_beoordeling_id;
+
+  if b.id is null then
+    raise exception 'Beoordeling niet gevonden';
+  end if;
+  if auth.uid() <> b.medewerker_id then
+    raise exception 'Alleen de toegewezen medewerker mag dit invullen';
+  end if;
+  if b.medewerker_ingevuld_at is not null then
+    raise exception 'Zelfevaluatie is al ingediend';
+  end if;
+  if jsonb_array_length(p_antwoorden) <> 6 then
+    raise exception 'Verwacht 6 pijlers met antwoorden';
+  end if;
+
+  update gpb_beoordelingen
+  set medewerker_antwoorden = p_antwoorden,
+      medewerker_ingevuld_at = now()
+  where id = p_beoordeling_id;
+
+  for doel in select * from jsonb_array_elements(p_doelen) loop
+    insert into gpb_doelen (beoordeling_id, omschrijving, pijler, deadline)
+    values (
+      p_beoordeling_id,
+      doel->>'omschrijving',
+      (doel->>'pijler')::int,
+      (doel->>'deadline')::date
+    );
+  end loop;
+end;
+$$;
+
+grant execute on function submit_gpb_medewerker(uuid, jsonb, jsonb) to authenticated;
+
+-- ============================================
+-- GPB: leidinggevende dient zijn beoordeling in. Mag alleen de toegewezen
+-- leidinggevende, alleen nadat de medewerker heeft ingevuld (matcht het
+-- principes-document: "Leidinggevende ontvangt een aparte uitnodiging NA
+-- invullen door de medewerker"), en alleen één keer.
+-- ============================================
+create or replace function submit_gpb_leidinggevende(
+  p_beoordeling_id uuid,
+  p_antwoorden jsonb
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  b gpb_beoordelingen;
+begin
+  select * into b from gpb_beoordelingen where id = p_beoordeling_id;
+
+  if b.id is null then
+    raise exception 'Beoordeling niet gevonden';
+  end if;
+  if auth.uid() <> b.leidinggevende_id then
+    raise exception 'Alleen de toegewezen leidinggevende mag dit invullen';
+  end if;
+  if b.medewerker_ingevuld_at is null then
+    raise exception 'Medewerker moet eerst zijn zelfevaluatie indienen';
+  end if;
+  if b.leidinggevende_ingevuld_at is not null then
+    raise exception 'Beoordeling is al ingediend';
+  end if;
+  if jsonb_array_length(p_antwoorden) <> 6 then
+    raise exception 'Verwacht 6 pijlers met antwoorden';
+  end if;
+
+  update gpb_beoordelingen
+  set leidinggevende_antwoorden = p_antwoorden,
+      leidinggevende_ingevuld_at = now()
+  where id = p_beoordeling_id;
+end;
+$$;
+
+grant execute on function submit_gpb_leidinggevende(uuid, jsonb) to authenticated;
+
+-- ============================================
+-- GPB: goedkeuren en definitief maken (alleen HR/admin, in die volgorde —
+-- zie de statuslevenscyclus in het principes-document).
+-- ============================================
+create or replace function keur_gpb_goed(p_beoordeling_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  b gpb_beoordelingen;
+begin
+  if my_role() not in ('hr', 'admin') then
+    raise exception 'Alleen HR of admin mag goedkeuren';
+  end if;
+
+  select * into b from gpb_beoordelingen where id = p_beoordeling_id;
+
+  if b.id is null then
+    raise exception 'Beoordeling niet gevonden';
+  end if;
+  if b.medewerker_ingevuld_at is null or b.leidinggevende_ingevuld_at is null then
+    raise exception 'Beide beoordelingen moeten eerst ingevuld zijn';
+  end if;
+  if b.status <> 'concept' then
+    raise exception 'Alleen een concept-beoordeling kan goedgekeurd worden';
+  end if;
+
+  update gpb_beoordelingen
+  set status = 'goedgekeurd', goedgekeurd_by = auth.uid(), goedgekeurd_at = now()
+  where id = p_beoordeling_id;
+end;
+$$;
+
+create or replace function maak_gpb_definitief(p_beoordeling_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  b gpb_beoordelingen;
+begin
+  if my_role() not in ('hr', 'admin') then
+    raise exception 'Alleen HR of admin mag definitief maken';
+  end if;
+
+  select * into b from gpb_beoordelingen where id = p_beoordeling_id;
+
+  if b.id is null then
+    raise exception 'Beoordeling niet gevonden';
+  end if;
+  if b.status <> 'goedgekeurd' then
+    raise exception 'Alleen een goedgekeurde beoordeling kan definitief gemaakt worden';
+  end if;
+
+  update gpb_beoordelingen
+  set status = 'definitief', definitief_at = now()
+  where id = p_beoordeling_id;
+end;
+$$;
+
+grant execute on function keur_gpb_goed(uuid) to authenticated;
+grant execute on function maak_gpb_definitief(uuid) to authenticated;

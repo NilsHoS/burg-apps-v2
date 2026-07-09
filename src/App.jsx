@@ -22,6 +22,7 @@ import SalesOverdracht from './pages/tools/SalesOverdracht'
 import DoorgroeiTracker from './pages/tools/DoorgroeiTracker'
 import MijnOmgeving from './pages/tools/MijnOmgeving'
 import ProeftijdTracker from './pages/tools/ProeftijdTracker'
+import GpbBeoordelingstool from './pages/tools/GpbBeoordelingstool'
 import './App.css'
 import './pages.css'
 
@@ -35,6 +36,7 @@ const TOOL_COMPONENTS = {
   'doorgroei-tracker': DoorgroeiTracker,
   'mijn-omgeving': MijnOmgeving,
   'proeftijd-tracker': ProeftijdTracker,
+  'gpb-beoordelingstool': GpbBeoordelingstool,
 }
 
 /**

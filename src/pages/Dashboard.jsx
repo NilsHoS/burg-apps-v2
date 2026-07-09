@@ -4,6 +4,7 @@ import { useAuth } from '../lib/AuthProvider'
 import { useTheme } from '../lib/useTheme'
 import { TOOLS, TOOL_CATEGORIES, hasAccess } from '../lib/toolRegistry'
 import { fetchMyToolUsageSummary } from '../lib/toolUsage'
+import { fetchMijnGpb, telOpenstaandeGpbActies } from '../lib/gpbApi'
 import ToolIcon from '../lib/toolIcons'
 
 const ROLE_LABELS = {
@@ -60,7 +61,7 @@ function FeaturedToolCard({ tool, entry }) {
   )
 }
 
-function ToolCard({ tool, unlocked }) {
+function ToolCard({ tool, unlocked, badgeAantal }) {
   if (!unlocked) {
     return (
       <div className="tool-card tool-card-locked" aria-disabled="true">
@@ -80,7 +81,10 @@ function ToolCard({ tool, unlocked }) {
       <div className="tool-card-icon">
         <ToolIcon toolId={tool.id} size={17} />
       </div>
-      <span className="tool-card-name">{tool.naam}</span>
+      <span className="tool-card-name">
+        {tool.naam}
+        {badgeAantal > 0 && <span className="tool-card-badge">{badgeAantal}</span>}
+      </span>
       <span className="tool-card-hint">Openen →</span>
     </Link>
   )
@@ -90,6 +94,7 @@ export default function Dashboard() {
   const { user, profile, signOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const [gebruik, setGebruik] = useState([])
+  const [gpbOpenstaand, setGpbOpenstaand] = useState(0)
 
   useEffect(() => {
     let isMounted = true
@@ -98,12 +103,18 @@ export default function Dashboard() {
       fetchMyToolUsageSummary(user.id).then((summary) => {
         if (isMounted) setGebruik(summary)
       })
+
+      fetchMijnGpb()
+        .then((beoordelingen) => {
+          if (isMounted) setGpbOpenstaand(telOpenstaandeGpbActies(beoordelingen, user.id, profile?.role))
+        })
+        .catch((err) => console.error('[Dashboard] Kon GPB-teller niet laden:', err.message))
     }
 
     return () => {
       isMounted = false
     }
-  }, [user?.id])
+  }, [user?.id, profile?.role])
 
   const featuredTools = gebruik
     .map((entry) => ({ entry, tool: TOOLS.find((t) => t.id === entry.toolId) }))
@@ -179,6 +190,7 @@ export default function Dashboard() {
                     key={tool.id}
                     tool={tool}
                     unlocked={hasAccess(profile?.role, tool.minimumRole)}
+                    badgeAantal={tool.id === 'gpb-beoordelingstool' ? gpbOpenstaand : 0}
                   />
                 ))}
               </div>

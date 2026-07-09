@@ -47,6 +47,13 @@ const ICONS = {
       <path d="M9 1h6" />
     </svg>
   ),
+  'gpb-beoordelingstool': (props) => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...props}>
+      <path d="M9 2h6a1 1 0 0 1 1 1v2H8V3a1 1 0 0 1 1-1Z" />
+      <path d="M8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2" />
+      <path d="m9 14 2 2 4-4" />
+    </svg>
+  ),
   'doorgroei-tracker': (props) => (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" {...props}>
       <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
