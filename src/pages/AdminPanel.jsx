@@ -44,6 +44,20 @@ export default function AdminPanel() {
   const [pendingIds, setPendingIds] = useState({})
   // confirmDeleteId: welk profiel op dit moment de "weet je het zeker?"-stap toont
   const [confirmDeleteId, setConfirmDeleteId] = useState(null)
+  // confirmDeleteText: invoer in het bevestigingsveld — moet exact "VERWIJDEREN" zijn
+  // voordat de knop actief wordt, om een permanente verwijdering niet per ongeluk te
+  // laten gebeuren met één misklik.
+  const [confirmDeleteText, setConfirmDeleteText] = useState('')
+
+  function startConfirmDelete(profileId) {
+    setConfirmDeleteId(profileId)
+    setConfirmDeleteText('')
+  }
+
+  function cancelConfirmDelete() {
+    setConfirmDeleteId(null)
+    setConfirmDeleteText('')
+  }
   // naamDrafts: { [profileId]: string } — lokale invoerwaarde tijdens het bewerken
   const [naamDrafts, setNaamDrafts] = useState({})
   // editingNaamId: welk profiel op dit moment het naam-veld open heeft staan
@@ -236,7 +250,7 @@ export default function AdminPanel() {
 
     try {
       await deleteUserPermanently(profileId)
-      setConfirmDeleteId(null)
+      cancelConfirmDelete()
       await loadProfiles()
     } catch (err) {
       setRowErrors((current) => ({ ...current, [profileId]: err.message }))
@@ -479,21 +493,29 @@ export default function AdminPanel() {
                     </td>
                     <td data-label="Verwijderen">
                       {confirmDeleteId === profile.id ? (
-                        <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-                          <span style={{ fontSize: '12px' }}>Weet je het zeker?</span>
+                        <div className="admin-confirm-delete">
+                          <span style={{ fontSize: '12px' }}>Typ VERWIJDEREN om te bevestigen</span>
+                          <div className="text-input-wrap">
+                            <input
+                              type="text"
+                              autoFocus
+                              value={confirmDeleteText}
+                              disabled={pendingIds[profile.id]}
+                              onChange={(e) => setConfirmDeleteText(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Escape') cancelConfirmDelete()
+                              }}
+                            />
+                          </div>
                           <button
                             type="button"
                             className="btn btn-danger"
-                            disabled={pendingIds[profile.id]}
+                            disabled={pendingIds[profile.id] || confirmDeleteText !== 'VERWIJDEREN'}
                             onClick={() => handleDeleteConfirmed(profile.id)}
                           >
                             Ja, permanent verwijderen
                           </button>
-                          <button
-                            type="button"
-                            className="btn btn-ghost"
-                            onClick={() => setConfirmDeleteId(null)}
-                          >
+                          <button type="button" className="btn btn-ghost" onClick={cancelConfirmDelete}>
                             Annuleren
                           </button>
                         </div>
@@ -501,7 +523,7 @@ export default function AdminPanel() {
                         <button
                           type="button"
                           className="btn btn-danger"
-                          onClick={() => setConfirmDeleteId(profile.id)}
+                          onClick={() => startConfirmDelete(profile.id)}
                         >
                           Verwijderen
                         </button>
