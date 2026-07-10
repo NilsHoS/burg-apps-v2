@@ -2,21 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthProvider'
 import { useTheme } from '../lib/useTheme'
-import { TOOLS, TOOL_CATEGORIES, hasAccess } from '../lib/toolRegistry'
+import { TOOLS, TOOL_CATEGORIES, hasAccess, roleLabel } from '../lib/toolRegistry'
 import { fetchMyToolUsageSummary } from '../lib/toolUsage'
 import { fetchMijnGpb, telOpenstaandeGpbActies } from '../lib/gpbApi'
+import { fetchNieuweVacaturesCount } from './tools/mijn-omgeving/burgJobsHelpers'
 import ToolIcon from '../lib/toolIcons'
-
-const ROLE_LABELS = {
-  admin: 'Admin',
-  manager: 'Manager',
-  hr: 'HR',
-  user: 'Gebruiker',
-}
-
-function roleLabel(role) {
-  return ROLE_LABELS[role] ?? role
-}
 
 function getGroet() {
   const uur = new Date().getHours()
@@ -95,6 +85,7 @@ export default function Dashboard() {
   const { theme, toggleTheme } = useTheme()
   const [gebruik, setGebruik] = useState([])
   const [gpbOpenstaand, setGpbOpenstaand] = useState(0)
+  const [nieuweVacaturesCount, setNieuweVacaturesCount] = useState(0)
 
   useEffect(() => {
     let isMounted = true
@@ -111,10 +102,16 @@ export default function Dashboard() {
         .catch((err) => console.error('[Dashboard] Kon GPB-teller niet laden:', err.message))
     }
 
+    if (profile?.email) {
+      fetchNieuweVacaturesCount(profile.email).then((count) => {
+        if (isMounted) setNieuweVacaturesCount(count)
+      })
+    }
+
     return () => {
       isMounted = false
     }
-  }, [user?.id, profile?.role])
+  }, [user?.id, profile?.role, profile?.email])
 
   const featuredTools = gebruik
     .map((entry) => ({ entry, tool: TOOLS.find((t) => t.id === entry.toolId) }))
@@ -125,12 +122,11 @@ export default function Dashboard() {
     <div className="page">
       <header className="topbar">
         <div>
-          <h1>BURG Apps</h1>
-          {profile && (
-            <p className="topbar-user">
-              {profile.naam} · {roleLabel(profile.role)}
-            </p>
-          )}
+          <h1 className="topbar-greeting-title">
+            {getGroet()}
+            {profile?.naam ? `, ${profile.naam.split(' ')[0]}` : ''}
+          </h1>
+          <p className="topbar-greeting-sub">{vandaagLabel()} — hier zijn je tools voor vandaag.</p>
         </div>
         <div className="topbar-actions">
           <button
@@ -157,14 +153,6 @@ export default function Dashboard() {
       </header>
 
       <main className="page-content">
-        <div className="dashboard-greeting">
-          <h2>
-            {getGroet()}
-            {profile?.naam ? `, ${profile.naam.split(' ')[0]}` : ''}
-          </h2>
-          <p>{vandaagLabel()} — hier zijn je tools voor vandaag.</p>
-        </div>
-
         {featuredTools.length > 0 && (
           <section className="tool-section">
             <p className="section-label">Voor jou · meest gebruikt</p>
@@ -190,7 +178,13 @@ export default function Dashboard() {
                     key={tool.id}
                     tool={tool}
                     unlocked={hasAccess(profile?.role, tool.minimumRole)}
-                    badgeAantal={tool.id === 'gpb-beoordelingstool' ? gpbOpenstaand : 0}
+                    badgeAantal={
+                      tool.id === 'gpb-beoordelingstool'
+                        ? gpbOpenstaand
+                        : tool.id === 'mijn-omgeving'
+                          ? nieuweVacaturesCount
+                          : 0
+                    }
                   />
                 ))}
               </div>

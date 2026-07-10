@@ -2,6 +2,30 @@ import { burgJobsSupabase } from '../../../lib/burgJobsClient'
 import { GO_WEBHOOK_URL } from './constants'
 
 /**
+ * Aantal eigen Go-vacatures zonder sales_status ("nieuw", nog geen actie
+ * ondernomen) — zelfde telling als de "Nieuwe vacatures"-teller in Mijn
+ * Vacatures (NIEUW_FILTER in MijnVacaturesTab.jsx). Gebruikt voor het
+ * reminder-bolletje op de Kansen Swiper dashboardtegel, zie Dashboard.jsx.
+ */
+export async function fetchNieuweVacaturesCount(email) {
+  if (!email) return 0
+
+  const { count, error } = await burgJobsSupabase
+    .from('jobs')
+    .select('id', { count: 'exact', head: true })
+    .eq('review_status', 'go')
+    .eq('assigned_to', email)
+    .is('sales_status', null)
+
+  if (error) {
+    console.error('[Dashboard] Kon nieuwe-vacatures-teller niet ophalen:', error.message)
+    return 0
+  }
+
+  return count || 0
+}
+
+/**
  * Go-toewijzing: verdeelt goedgekeurde vacatures evenredig (round-robin,
  * naar wie er vandaag de minste heeft gekregen) over de AANWEZIGE
  * medewerkers van die dag — dus 15 Go's over 3 aanwezigen geeft 5 per

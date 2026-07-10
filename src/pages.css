@@ -287,18 +287,15 @@
   margin: 0;
 }
 
-/* ---------- Dashboard: welkomstbericht + uitgelichte tools ---------- */
+/* ---------- Dashboard: welkomstbericht in de header + uitgelichte tools ---------- */
 
-.dashboard-greeting {
-  margin: 0 0 var(--space-8);
+/* Overschrijft de standaard .topbar h1 (19px) — dit is hier het
+   welkomstbericht, geen paginatitel, en mag dus prominenter. */
+.topbar h1.topbar-greeting-title {
+  font-size: 22px;
 }
 
-.dashboard-greeting h2 {
-  font-size: 26px;
-  margin: 0;
-}
-
-.dashboard-greeting p {
+.topbar-greeting-sub {
   margin: var(--space-1) 0 0;
   font-size: 14px;
   color: var(--inkt-60);

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../lib/AuthProvider'
+import { roleLabel } from '../lib/toolRegistry'
 
 /** Laat een ingelogde gebruiker zelf zijn/haar wachtwoord wijzigen. */
 export default function Account() {
@@ -47,7 +48,7 @@ export default function Account() {
           <h1>Mijn account</h1>
           {profile && (
             <p className="topbar-user">
-              {profile.naam} · {user?.email}
+              {profile.naam} · {roleLabel(profile.role)} · {user?.email}
             </p>
           )}
         </div>

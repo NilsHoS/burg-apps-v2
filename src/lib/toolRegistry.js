@@ -48,3 +48,15 @@ export function hasAccess(userRole, minimumRole) {
   const requiredLevel = ROLE_HIERARCHY[minimumRole] ?? Infinity
   return userLevel >= requiredLevel
 }
+
+const ROLE_LABELS = {
+  admin: 'Admin',
+  manager: 'Manager',
+  hr: 'HR',
+  user: 'Gebruiker',
+}
+
+/** Leesbare rol-naam voor weergave in de UI (Dashboard, Mijn account). */
+export function roleLabel(role) {
+  return ROLE_LABELS[role] ?? role
+}
