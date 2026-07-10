@@ -65,7 +65,7 @@ export default function SwipenTab({
     setCurrent((c) => c + 1)
     setActionError('')
 
-    const { error: goError } = await assignGoVacature(vac.id, vac.job_description || '', employees, currentUserEmail)
+    const { error: goError } = await assignGoVacature(vac.id, employees, currentUserEmail)
     if (goError) setActionError('Opslaan van de Go-beslissing is mislukt: ' + goError.message)
     onWentGo?.()
   }

@@ -1,57 +1,48 @@
 import { burgJobsSupabase } from '../../../lib/burgJobsClient'
-import { GO_WEBHOOK_URL, GESLOTEN_STATUSSEN } from './constants'
+import { GO_WEBHOOK_URL } from './constants'
 
 /**
- * Senioriteitsbepaling — in de bron een expliciete stub die altijd 'medior'
- * teruggeeft (LLM-classificatie is nog niet gekoppeld, zie project-CLAUDE.md
- * "Wat nog moet gebeuren"). Bewust ongewijzigd overgenomen: niet "verbeteren".
+ * Go-toewijzing: verdeelt goedgekeurde vacatures evenredig (round-robin,
+ * naar wie er vandaag de minste heeft gekregen) over de AANWEZIGE
+ * medewerkers van die dag — dus 15 Go's over 3 aanwezigen geeft 5 per
+ * persoon. Bewust GEEN senioriteitsfilter meer (die stub gaf toch altijd
+ * 'medior' terug; wordt in een later stadium opnieuw gebouwd) en bewust
+ * GEEN weging op historische workload/fte_hours: dat zou iemand met een
+ * grote (al dan niet netjes bijgehouden) bestaande stapel structureel
+ * bevoordelen of benadelen bij nieuwe toewijzingen. Alleen de telling van
+ * VANDAAG telt mee. Is niemand aanwezig, dan valt het terug op de swiper
+ * zelf. Schrijft de toewijzing in één update, en vuurt daarna
+ * (fire-and-forget, nooit blokkerend) de Apollo-enrichment webhook af.
  */
-export function determineSeniority(_description) {
-  return 'medior'
-}
-
-/**
- * Go-toewijzing — exact overgenomen uit `assignGoVacature` (bron regel 1042),
- * met één correctie: senioriteit bepalen (stub), dan onder aanwezige
- * medewerkers wiens `seniority_levels` die senioriteit bevat (fallback: alle
- * aanwezigen) diegene kiezen met de laagste load-per-fte (aantal huidige
- * 'go'-vacatures met een niet-gesloten sales_status, gedeeld door
- * fte_hours). GESLOTEN_STATUSSEN (bv. 'Closed loss') telt niet mee in die
- * load — anders zou iemand met een grote historische, allang afgesloten
- * stapel structureel worden overgeslagen bij nieuwe toewijzingen. Schrijft
- * alle velden in één update, en vuurt daarna (fire-and-forget, nooit
- * blokkerend) de Apollo-enrichment webhook af.
- */
-export async function assignGoVacature(jobId, description, employees, currentUserEmail) {
-  const seniority = determineSeniority(description)
+export async function assignGoVacature(jobId, employees, currentUserEmail) {
   const now = new Date().toISOString()
 
   const present = employees.filter((e) => e.is_present)
   let chosenEmail = currentUserEmail
 
   if (present.length > 0) {
-    const { data: goJobs } = await burgJobsSupabase
+    const todayStart = new Date()
+    todayStart.setHours(0, 0, 0, 0)
+
+    const { data: goVandaag } = await burgJobsSupabase
       .from('jobs')
-      .select('assigned_to, sales_status')
+      .select('assigned_to')
       .eq('review_status', 'go')
+      .gte('reviewed_at', todayStart.toISOString())
       .in(
         'assigned_to',
         present.map((e) => e.email),
       )
 
-    const goCounts = {}
+    const counts = {}
     present.forEach((e) => {
-      goCounts[e.email] = 0
+      counts[e.email] = 0
     })
-    ;(goJobs || []).forEach((j) => {
-      if (GESLOTEN_STATUSSEN.includes(j.sales_status)) return
-      if (j.assigned_to in goCounts) goCounts[j.assigned_to] += 1
+    ;(goVandaag || []).forEach((j) => {
+      if (j.assigned_to in counts) counts[j.assigned_to] += 1
     })
 
-    const weighted = (emp) => goCounts[emp.email] / emp.fte_hours
-    let candidates = present.filter((e) => e.seniority_levels && e.seniority_levels.includes(seniority))
-    if (candidates.length === 0) candidates = present
-    chosenEmail = candidates.reduce((best, emp) => (weighted(emp) < weighted(best) ? emp : best)).email
+    chosenEmail = present.reduce((minst, emp) => (counts[emp.email] < counts[minst.email] ? emp : minst)).email
   }
 
   const { error } = await burgJobsSupabase
@@ -59,8 +50,6 @@ export async function assignGoVacature(jobId, description, employees, currentUse
     .update({
       review_status: 'go',
       assigned_to: chosenEmail,
-      seniority_level: seniority,
-      seniority_reviewed_at: now,
       reviewed_at: now,
     })
     .eq('id', jobId)
