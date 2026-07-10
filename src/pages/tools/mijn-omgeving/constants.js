@@ -36,3 +36,11 @@ export const SOURCE_ORDER = {
   indeed: 2,
   'werkzoeken.nl': 3,
 }
+
+// 'Closed loss' is een legacy sales_status-waarde die niet meer in
+// SALES_STATUSES voorkomt (dus onzichtbaar in Mijn Vacatures) en duidelijk
+// een afgeronde/verloren zaak beschrijft. Telt daarom nergens meer mee als
+// actieve workload — niet in het admin-overzicht (AdminOverzichtTab), en
+// niet bij het bepalen wie de volgende Go-vacature toegewezen krijgt
+// (assignGoVacature in burgJobsHelpers.js).
+export const GESLOTEN_STATUSSEN = ['Closed loss']

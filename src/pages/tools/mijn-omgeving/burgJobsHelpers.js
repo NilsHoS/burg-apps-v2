@@ -1,5 +1,5 @@
 import { burgJobsSupabase } from '../../../lib/burgJobsClient'
-import { GO_WEBHOOK_URL } from './constants'
+import { GO_WEBHOOK_URL, GESLOTEN_STATUSSEN } from './constants'
 
 /**
  * Senioriteitsbepaling — in de bron een expliciete stub die altijd 'medior'
@@ -11,12 +11,16 @@ export function determineSeniority(_description) {
 }
 
 /**
- * Go-toewijzing — exact overgenomen uit `assignGoVacature` (bron regel 1042):
- * senioriteit bepalen (stub), dan onder aanwezige medewerkers wiens
- * `seniority_levels` die senioriteit bevat (fallback: alle aanwezigen) diegene
- * kiezen met de laagste load-per-fte (aantal huidige 'go'-vacatures gedeeld
- * door fte_hours). Schrijft alle velden in één update, en vuurt daarna
- * (fire-and-forget, nooit blokkerend) de Apollo-enrichment webhook af.
+ * Go-toewijzing — exact overgenomen uit `assignGoVacature` (bron regel 1042),
+ * met één correctie: senioriteit bepalen (stub), dan onder aanwezige
+ * medewerkers wiens `seniority_levels` die senioriteit bevat (fallback: alle
+ * aanwezigen) diegene kiezen met de laagste load-per-fte (aantal huidige
+ * 'go'-vacatures met een niet-gesloten sales_status, gedeeld door
+ * fte_hours). GESLOTEN_STATUSSEN (bv. 'Closed loss') telt niet mee in die
+ * load — anders zou iemand met een grote historische, allang afgesloten
+ * stapel structureel worden overgeslagen bij nieuwe toewijzingen. Schrijft
+ * alle velden in één update, en vuurt daarna (fire-and-forget, nooit
+ * blokkerend) de Apollo-enrichment webhook af.
  */
 export async function assignGoVacature(jobId, description, employees, currentUserEmail) {
   const seniority = determineSeniority(description)
@@ -28,7 +32,7 @@ export async function assignGoVacature(jobId, description, employees, currentUse
   if (present.length > 0) {
     const { data: goJobs } = await burgJobsSupabase
       .from('jobs')
-      .select('assigned_to')
+      .select('assigned_to, sales_status')
       .eq('review_status', 'go')
       .in(
         'assigned_to',
@@ -40,6 +44,7 @@ export async function assignGoVacature(jobId, description, employees, currentUse
       goCounts[e.email] = 0
     })
     ;(goJobs || []).forEach((j) => {
+      if (GESLOTEN_STATUSSEN.includes(j.sales_status)) return
       if (j.assigned_to in goCounts) goCounts[j.assigned_to] += 1
     })
 

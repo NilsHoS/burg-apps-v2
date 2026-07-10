@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { burgJobsSupabase } from '../../../lib/burgJobsClient'
+import { GESLOTEN_STATUSSEN } from './constants'
 
 /**
  * Admin-only overzicht: hoeveel goedgekeurde ("go") vacatures staan er per
  * medewerker nog open — puur read-only, bedoeld om de workload-verdeling
  * tussen consultants in de gaten te houden. Los van de swipe-wachtrij (die
  * is sinds kort gedeeld, zie MijnOmgeving.jsx): dit telt alleen vacatures
- * die al zijn goedgekeurd én aan iemand zijn toegewezen (assignGoVacature).
+ * die al zijn goedgekeurd én aan iemand zijn toegewezen (assignGoVacature),
+ * met uitzondering van GESLOTEN_STATUSSEN hierboven.
  */
 export default function AdminOverzichtTab({ visible, employees, employeesLoading, employeesError }) {
   const [counts, setCounts] = useState(new Map())
@@ -22,7 +24,7 @@ export default function AdminOverzichtTab({ visible, employees, employeesLoading
 
       const { data, error: loadError } = await burgJobsSupabase
         .from('jobs')
-        .select('assigned_to')
+        .select('assigned_to, sales_status')
         .eq('review_status', 'go')
 
       if (cancelled) return
@@ -36,6 +38,7 @@ export default function AdminOverzichtTab({ visible, employees, employeesLoading
       const tally = new Map()
       ;(data || []).forEach((j) => {
         if (!j.assigned_to) return
+        if (GESLOTEN_STATUSSEN.includes(j.sales_status)) return
         tally.set(j.assigned_to, (tally.get(j.assigned_to) || 0) + 1)
       })
       setCounts(tally)
