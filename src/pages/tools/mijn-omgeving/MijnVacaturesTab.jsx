@@ -108,8 +108,9 @@ export default function MijnVacaturesTab({
   }, [nieuwCount])
 
   async function updateStatus(jobId, status) {
-    setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, sales_status: status } : j)))
-    await burgJobsSupabase.from('jobs').update({ sales_status: status }).eq('id', jobId)
+    const now = new Date().toISOString()
+    setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, sales_status: status, sales_status_at: now } : j)))
+    await burgJobsSupabase.from('jobs').update({ sales_status: status, sales_status_at: now }).eq('id', jobId)
     onToast?.('Status opgeslagen.')
   }
 

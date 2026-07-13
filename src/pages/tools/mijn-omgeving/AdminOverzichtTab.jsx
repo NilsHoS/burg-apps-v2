@@ -15,11 +15,30 @@ function bucketVoor(salesStatus) {
   return SALES_STATUSES.includes(salesStatus) ? salesStatus : OVERIG_BUCKET
 }
 
+// Meest recente maandag 00:00 lokale tijd — begin van de huidige werkweek.
+// getDay(): 0 = zondag ... 6 = zaterdag.
+function startVanDezeWeek() {
+  const nu = new Date()
+  const dag = nu.getDay()
+  const dagenTerug = dag === 0 ? 6 : dag - 1
+  const maandag = new Date(nu)
+  maandag.setDate(nu.getDate() - dagenTerug)
+  maandag.setHours(0, 0, 0, 0)
+  return maandag
+}
+
 /**
  * Admin-only overzicht: per medewerker een uitsplitsing van hun
- * goedgekeurde ("go") vacatures naar status — vooral bedoeld om in één
- * oogopslag te zien wie nog "Nieuwe vacatures" (nog geen actie) heeft
- * openstaan, in plaats van dat één opgeteld totaal die piek verbergt.
+ * goedgekeurde ("go") vacatures naar status. "Nieuwe vacatures" is een
+ * doorlopende achterstand (nog geen actie) en telt altijd mee, ongeacht
+ * wanneer. De overige kolommen (Toegevoegd aan Bullhorn/Al bekend/Overig/
+ * Totaal) tellen bewust alleen wat DEZE WEEK is afgehandeld — sinds
+ * afgelopen maandag 00:00 — zodat ze elke week weer op 0 beginnen i.p.v.
+ * een eeuwig oplopende teller te zijn. Dat vereist een tijdstempel van
+ * wanneer sales_status gezet is (sales_status_at, zie MijnVacaturesTab.jsx
+ * updateStatus()); bestaande rijen van vóór die kolom bestond hebben die
+ * niet en tellen dus terecht niet mee in "deze week".
+ *
  * Los van de swipe-wachtrij (die is gedeeld, zie MijnOmgeving.jsx). Telt
  * GESLOTEN_STATUSSEN (bv. 'Closed loss') nergens mee — dat zijn afgeronde
  * zaken, geen openstaande workload.
@@ -39,7 +58,7 @@ export default function AdminOverzichtTab({ visible, employees, employeesLoading
 
       const { data, error: loadError } = await burgJobsSupabase
         .from('jobs')
-        .select('assigned_to, sales_status')
+        .select('assigned_to, sales_status, sales_status_at')
         .eq('review_status', 'go')
 
       if (cancelled) return
@@ -50,6 +69,8 @@ export default function AdminOverzichtTab({ visible, employees, employeesLoading
         return
       }
 
+      const dezeWeekStart = startVanDezeWeek()
+
       const tally = new Map()
       let overigGezien = false
       ;(data || []).forEach((j) => {
@@ -57,6 +78,15 @@ export default function AdminOverzichtTab({ visible, employees, employeesLoading
         if (GESLOTEN_STATUSSEN.includes(j.sales_status)) return
 
         const bucket = bucketVoor(j.sales_status)
+
+        // "Nieuwe vacatures" is een doorlopende achterstand, geen
+        // weekteller — die telt altijd mee. De andere kolommen alleen als
+        // de status deze week is gezet.
+        if (bucket !== NIEUW_BUCKET) {
+          const gezetOp = j.sales_status_at ? new Date(j.sales_status_at) : null
+          if (!gezetOp || gezetOp < dezeWeekStart) return
+        }
+
         if (bucket === OVERIG_BUCKET) overigGezien = true
 
         if (!tally.has(j.assigned_to)) tally.set(j.assigned_to, {})
@@ -81,8 +111,10 @@ export default function AdminOverzichtTab({ visible, employees, employeesLoading
       const nieuw = rec[NIEUW_BUCKET] || 0
       const overig = rec[OVERIG_BUCKET] || 0
       const perStatus = SALES_STATUSES.map((status) => rec[status] || 0)
-      const totaal = nieuw + overig + perStatus.reduce((a, b) => a + b, 0)
-      return { ...emp, nieuw, overig, perStatus, totaal }
+      // Totaal = alleen de kolommen die deze week resetten, bewust exclusief
+      // "Nieuwe vacatures" (die is en blijft een doorlopende achterstand).
+      const totaalDezeWeek = overig + perStatus.reduce((a, b) => a + b, 0)
+      return { ...emp, nieuw, overig, perStatus, totaalDezeWeek }
     })
     .sort((a, b) => b.nieuw - a.nieuw || a.name.localeCompare(b.name, 'nl'))
 
@@ -92,6 +124,10 @@ export default function AdminOverzichtTab({ visible, employees, employeesLoading
   return (
     <div className={visible ? 'mo-tab-panel' : 'mo-tab-panel mo-tab-panel-hidden'}>
       <p className="calc-section-label">Go-vacatures per medewerker, per status</p>
+      <p className="tool-card-hint">
+        "Nieuwe vacatures" is een doorlopende achterstand. De overige kolommen tellen alleen wat deze week is
+        afgehandeld en beginnen elke maandag weer op 0.
+      </p>
 
       {bezig && <div className="idle-state">Laden…</div>}
 
@@ -109,10 +145,10 @@ export default function AdminOverzichtTab({ visible, employees, employeesLoading
                 <th>Medewerker</th>
                 <th>Nieuwe vacatures</th>
                 {SALES_STATUSES.map((status) => (
-                  <th key={status}>{status}</th>
+                  <th key={status}>{status} (deze week)</th>
                 ))}
-                {heeftOverig && <th>Overig</th>}
-                <th>Totaal</th>
+                {heeftOverig && <th>Overig (deze week)</th>}
+                <th>Totaal deze week</th>
               </tr>
             </thead>
             <tbody>
@@ -121,12 +157,12 @@ export default function AdminOverzichtTab({ visible, employees, employeesLoading
                   <td data-label="Medewerker">{r.name}</td>
                   <td data-label="Nieuwe vacatures">{r.nieuw}</td>
                   {SALES_STATUSES.map((status, i) => (
-                    <td data-label={status} key={status}>
+                    <td data-label={`${status} (deze week)`} key={status}>
                       {r.perStatus[i]}
                     </td>
                   ))}
-                  {heeftOverig && <td data-label="Overig">{r.overig}</td>}
-                  <td data-label="Totaal">{r.totaal}</td>
+                  {heeftOverig && <td data-label="Overig (deze week)">{r.overig}</td>}
+                  <td data-label="Totaal deze week">{r.totaalDezeWeek}</td>
                 </tr>
               ))}
             </tbody>
