@@ -12,6 +12,30 @@ const SELECT_COLUMNS =
 // Geen echte SALES_STATUSES-waarde, dus apart gehouden van getStatus().
 const NIEUW_FILTER = 'nieuw'
 
+// sessionStorage-cache (jobs + filter + scrollpositie) per e-mailadres —
+// zie het component-docblok hieronder voor de reden: browsers discarden
+// een achtergrondtab en herladen 'm vanaf nul zodra je terugkomt, waardoor
+// React-state (en dus ook alles hier) gewoon weg is. sessionStorage
+// overleeft die herlaad wel.
+function cacheKey(email) {
+  return `mo-mijn-vacatures-${email}`
+}
+function filterKey(email) {
+  return `mo-mijn-vacatures-filter-${email}`
+}
+function scrollKey(email) {
+  return `mo-mijn-vacatures-scroll-${email}`
+}
+
+function leesJsonUitStorage(key) {
+  try {
+    const raw = sessionStorage.getItem(key)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 function getStatus(job) {
   return job.sales_status || null
 }
@@ -28,6 +52,14 @@ function formatDate(value) {
  * `buildMvCard` uit de bron (regel 1095 e.v.). Blijft altijd gemount
  * (zichtbaarheid via `visible`-prop + CSS), zodat het geselecteerde filter
  * niet verloren gaat bij het wisselen naar Swipen en terug.
+ *
+ * Cacht jobs/filter/scrollpositie in sessionStorage: mobiele (en drukke
+ * desktop-)browsers discarden een achtergrondtab om geheugen vrij te maken
+ * en herladen die volledig zodra je terugkomt — React-state is dan gewoon
+ * weg, ook al is dit component "permanent gemount" binnen de SPA. Met de
+ * cache toont dit component meteen de vorige lijst (geen laadspinner, geen
+ * lege pagina) en herstelt de scrollpositie, terwijl er op de achtergrond
+ * stil geverifieerd wordt of de data nog actueel is.
  */
 export default function MijnVacaturesTab({
   visible,
@@ -37,10 +69,16 @@ export default function MijnVacaturesTab({
   onToast,
   onNieuwCountChange,
 }) {
-  const [jobs, setJobs] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [jobs, setJobs] = useState(() => leesJsonUitStorage(cacheKey(currentUserEmail)) ?? [])
+  const [loading, setLoading] = useState(() => jobs.length === 0)
   const [error, setError] = useState('')
-  const [filter, setFilter] = useState(NIEUW_FILTER)
+  const [filter, setFilter] = useState(() => {
+    try {
+      return sessionStorage.getItem(filterKey(currentUserEmail)) || NIEUW_FILTER
+    } catch {
+      return NIEUW_FILTER
+    }
+  })
   const [doorsturenJob, setDoorsturenJob] = useState(null)
 
   const load = useCallback(
@@ -70,10 +108,74 @@ export default function MijnVacaturesTab({
     [currentUserEmail],
   )
 
-  // Initiële lading (en herlading als de ingelogde gebruiker wijzigt).
+  // Initiële lading: als er al een cache is, telt dat als "stil" verversen
+  // (geen spinner/lege-pagina-flits) — anders de normale eerste lading.
+  const initialLoadWasSilent = useRef(jobs.length > 0)
   useEffect(() => {
-    load(false)
+    load(initialLoadWasSilent.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [load])
+
+  // Cache bijwerken zodra de joblijst wijzigt (na elke load of lokale
+  // mutatie), zodat een volgende (herladen) mount meteen kan tonen.
+  useEffect(() => {
+    if (!currentUserEmail) return
+    try {
+      sessionStorage.setItem(cacheKey(currentUserEmail), JSON.stringify(jobs))
+    } catch {
+      // Niet kritiek — dan is er gewoon geen cache voor de volgende keer.
+    }
+  }, [jobs, currentUserEmail])
+
+  useEffect(() => {
+    if (!currentUserEmail) return
+    try {
+      sessionStorage.setItem(filterKey(currentUserEmail), filter)
+    } catch {
+      // Niet kritiek.
+    }
+  }, [filter, currentUserEmail])
+
+  // Scrollpositie: alleen bijhouden terwijl dit tabblad zichtbaar is (alle
+  // tabbladen delen dezelfde window-scroll, dus anders zou dit de
+  // scrollpositie van Swipen/Overzicht overschrijven). Bij elke overgang
+  // naar zichtbaar wordt de eigen laatst bekende positie hersteld.
+  useEffect(() => {
+    if (!visible || !currentUserEmail) return undefined
+
+    let raf = null
+    function onScroll() {
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = null
+        try {
+          sessionStorage.setItem(scrollKey(currentUserEmail), String(window.scrollY))
+        } catch {
+          // Niet kritiek.
+        }
+      })
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [visible, currentUserEmail])
+
+  useEffect(() => {
+    if (!visible || !currentUserEmail || jobs.length === 0) return
+    try {
+      const saved = sessionStorage.getItem(scrollKey(currentUserEmail))
+      if (saved) {
+        requestAnimationFrame(() => window.scrollTo(0, Number(saved)))
+      }
+    } catch {
+      // Niet kritiek — dan begint de gebruiker gewoon bovenaan.
+    }
+    // Alleen bij het zichtbaar worden herstellen, niet bij elke jobs-update.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible])
 
   // Stille herlading na een Go-beslissing op de Swipen-tab — matcht
   // `loadMijnVacaturesBackground()` in de bron. De eerste effect-run (bij

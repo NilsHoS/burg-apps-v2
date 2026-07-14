@@ -11,6 +11,24 @@ import AdminOverzichtTab from './mijn-omgeving/AdminOverzichtTab'
 const SWIPE_COLUMNS =
   'id,job_title,company_name,job_location,job_url,data_source,date_scraped,posted_at,salary,employment_type,industry,recruiter_name,recruiter_headline,recruiter_linkedin,company_website,job_description,contact_name,contact_email,contact_phone'
 
+// Onthoudt welk tabblad actief was, over een volledige page-reload heen —
+// zie ACTIVE_TAB_KEY-gebruik hieronder. Browsers (vooral mobiel) discarden
+// een achtergrondtab regelmatig om geheugen vrij te maken; komt de
+// gebruiker terug, dan doet de browser een volledige herlaad van de pagina
+// (React-state en dus ook activeTab is dan gewoon weg). sessionStorage
+// overleeft die herlaad wel, dus daar valt dit op terug.
+const ACTIVE_TAB_KEY = 'kansen-swiper-active-tab'
+
+function leesOpgeslagenTab(beschikbareTabs, isUitgebreid) {
+  try {
+    const opgeslagen = sessionStorage.getItem(ACTIVE_TAB_KEY)
+    if (opgeslagen && beschikbareTabs.includes(opgeslagen)) return opgeslagen
+  } catch {
+    // sessionStorage kan ontbreken/geblokkeerd zijn — dan gewoon de default.
+  }
+  return isUitgebreid ? 'swipen' : 'vacatures'
+}
+
 /**
  * Kansen Swiper (voorheen "Mijn Omgeving") — Fase 1: Swipen + Mijn Vacatures + aanwezigheidswidget.
  * Second Check / Analytics / Monitoring zijn bewust buiten scope (zie
@@ -59,10 +77,18 @@ export default function MijnOmgeving() {
   tabs.push('vacatures')
   if (isAdmin) tabs.push('overzicht')
 
-  const [activeTab, setActiveTab] = useState(() => (isUitgebreid ? 'swipen' : 'vacatures'))
+  const [activeTab, setActiveTab] = useState(() => leesOpgeslagenTab(tabs, isUitgebreid))
   const swipenVisible = isUitgebreid && activeTab === 'swipen'
   const vacaturesVisible = activeTab === 'vacatures'
   const overzichtVisible = isAdmin && activeTab === 'overzicht'
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(ACTIVE_TAB_KEY, activeTab)
+    } catch {
+      // Niet kritiek — dan onthoudt de tab het gewoon niet na een herlaad.
+    }
+  }, [activeTab])
 
   const [employees, setEmployees] = useState([])
   const [employeesLoading, setEmployeesLoading] = useState(true)
