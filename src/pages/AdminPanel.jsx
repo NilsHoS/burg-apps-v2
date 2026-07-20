@@ -49,6 +49,13 @@ function fmtDatum(isoString) {
   })
 }
 
+/** Voor een kale date-kolom (yyyy-mm-dd), zonder tijd — bv. yield_sinds/yield_tot. */
+function fmtDatumKort(dateStr) {
+  if (!dateStr) return null
+  const [jaar, maand, dag] = dateStr.split('-')
+  return `${dag}-${maand}-${jaar}`
+}
+
 export default function AdminPanel() {
   const [profiles, setProfiles] = useState([])
   const [loading, setLoading] = useState(true)
@@ -130,6 +137,15 @@ export default function AdminPanel() {
   function toggleExpanded(profileId) {
     setExpandedIds((current) => ({ ...current, [profileId]: !current[profileId] }))
   }
+
+  // editingYieldSindsId/editingYieldTotId: welk profiel op dit moment het
+  // betreffende datumveld open heeft staan. Buiten het bewerken om tonen we
+  // platte tekst (datum, of "Lopend"/"—" als leeg) i.p.v. altijd een leeg
+  // <input type="date"> — Chrome herstelt anders bij een reload een eerder
+  // getypte waarde in zo'n leeg veld (overleeft zelfs een harde refresh),
+  // wat een lege yield_tot ten onrechte gevuld liet lijken.
+  const [editingYieldSindsId, setEditingYieldSindsId] = useState(null)
+  const [editingYieldTotId, setEditingYieldTotId] = useState(null)
 
   useEffect(() => {
     loadProfiles()
@@ -835,27 +851,63 @@ export default function AdminPanel() {
                           </label>
                           <span className="admin-table-details-yield-datum">
                             <strong>Yield sinds:</strong>
-                            <div className="text-input-wrap">
-                              <input
-                                type="date"
-                                autoComplete="off"
-                                value={profile.yield_sinds ?? ''}
-                                disabled={pendingIds[profile.id] || !profile.yield_telt_mee}
-                                onChange={(e) => handleYieldSindsChange(profile.id, e.target.value)}
-                              />
-                            </div>
+                            {profile.yield_telt_mee && editingYieldSindsId === profile.id ? (
+                              <div className="text-input-wrap">
+                                <input
+                                  type="date"
+                                  autoComplete="off"
+                                  autoFocus
+                                  value={profile.yield_sinds ?? ''}
+                                  disabled={pendingIds[profile.id]}
+                                  onChange={(e) => handleYieldSindsChange(profile.id, e.target.value)}
+                                  onBlur={() => setEditingYieldSindsId(null)}
+                                />
+                              </div>
+                            ) : (
+                              <span className="admin-naam-display">
+                                <span>{fmtDatumKort(profile.yield_sinds) ?? '—'}</span>
+                                {profile.yield_telt_mee && (
+                                  <button
+                                    type="button"
+                                    className="delete-btn"
+                                    title="Yield sinds wijzigen"
+                                    onClick={() => setEditingYieldSindsId(profile.id)}
+                                  >
+                                    ✎
+                                  </button>
+                                )}
+                              </span>
+                            )}
                           </span>
                           <span className="admin-table-details-yield-datum">
                             <strong>Yield tot:</strong>
-                            <div className="text-input-wrap">
-                              <input
-                                type="date"
-                                autoComplete="off"
-                                value={profile.yield_tot ?? ''}
-                                disabled={pendingIds[profile.id] || !profile.yield_telt_mee}
-                                onChange={(e) => handleYieldTotChange(profile.id, e.target.value)}
-                              />
-                            </div>
+                            {profile.yield_telt_mee && editingYieldTotId === profile.id ? (
+                              <div className="text-input-wrap">
+                                <input
+                                  type="date"
+                                  autoComplete="off"
+                                  autoFocus
+                                  value={profile.yield_tot ?? ''}
+                                  disabled={pendingIds[profile.id]}
+                                  onChange={(e) => handleYieldTotChange(profile.id, e.target.value)}
+                                  onBlur={() => setEditingYieldTotId(null)}
+                                />
+                              </div>
+                            ) : (
+                              <span className="admin-naam-display">
+                                <span>{fmtDatumKort(profile.yield_tot) ?? 'Lopend'}</span>
+                                {profile.yield_telt_mee && (
+                                  <button
+                                    type="button"
+                                    className="delete-btn"
+                                    title="Yield tot wijzigen"
+                                    onClick={() => setEditingYieldTotId(profile.id)}
+                                  >
+                                    ✎
+                                  </button>
+                                )}
+                              </span>
+                            )}
                           </span>
                         </div>
                       </td>
