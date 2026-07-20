@@ -543,7 +543,12 @@ export default function AdminPanel() {
                 <div className="field-block">
                   <label className="field-label">Sinds</label>
                   <div className={newYieldSinds ? 'text-input-wrap has-input' : 'text-input-wrap needs-input'}>
-                    <input type="date" value={newYieldSinds} onChange={(e) => setNewYieldSinds(e.target.value)} />
+                    <input
+                      type="date"
+                      autoComplete="off"
+                      value={newYieldSinds}
+                      onChange={(e) => setNewYieldSinds(e.target.value)}
+                    />
                   </div>
                 </div>
               )}
@@ -833,6 +838,7 @@ export default function AdminPanel() {
                             <div className="text-input-wrap">
                               <input
                                 type="date"
+                                autoComplete="off"
                                 value={profile.yield_sinds ?? ''}
                                 disabled={pendingIds[profile.id] || !profile.yield_telt_mee}
                                 onChange={(e) => handleYieldSindsChange(profile.id, e.target.value)}
@@ -844,6 +850,7 @@ export default function AdminPanel() {
                             <div className="text-input-wrap">
                               <input
                                 type="date"
+                                autoComplete="off"
                                 value={profile.yield_tot ?? ''}
                                 disabled={pendingIds[profile.id] || !profile.yield_telt_mee}
                                 onChange={(e) => handleYieldTotChange(profile.id, e.target.value)}
