@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { jsPDF } from 'jspdf'
 
 /**
  * Definitief Honorarium — poort van plaatsing.html ("Honorarium tool").
@@ -28,6 +29,74 @@ function fmtFeePct(n) {
 function fmtBonusPct(bonusFractie) {
   const pct = bonusFractie * 100
   return pct % 1 === 0 ? pct.toFixed(0) + '%' : pct.toFixed(1).replace('.', ',') + '%'
+}
+
+/**
+ * Bouwt een PDF-samenvatting van de honorarium-berekening (voor bijlage in
+ * Bullhorn) en downloadt hem direct, via jsPDF's ingebouwde .save() — zie
+ * printForBullhorn in VerdelingPlaatsing.jsx voor het origineel van dit patroon.
+ */
+function printForBullhorn(uitkomst) {
+  if (!uitkomst) return
+
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+  const marginX = 48
+  let y = 56
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(16)
+  doc.text('Definitief Honorarium', marginX, y)
+  y += 20
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.setTextColor(110, 110, 110)
+  doc.text(new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }), marginX, y)
+  y += 28
+
+  const detailRow = (label, value) => {
+    doc.setTextColor(20, 20, 20)
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(11)
+    doc.text(label, marginX, y)
+    doc.text(value, 500, y, { align: 'right' })
+    y += 18
+  }
+
+  detailRow('Maandsalaris', fmt(uitkomst.maand) + ' / mnd')
+  detailRow('Periodes', String(uitkomst.periodes))
+  detailRow('Vakantiegeld', uitkomst.vakAan ? 'Ja — 8%' : 'Nee — 0%')
+  detailRow('Leaseauto', uitkomst.lease ? 'Ja — € 6.000' : 'Nee — € 0')
+  detailRow('Bonus', fmtBonusPct(uitkomst.bonusFractie))
+  y += 10
+
+  doc.setDrawColor(210, 210, 210)
+  doc.line(marginX, y, 547, y)
+  y += 24
+
+  detailRow('Bruto jaarsalaris', fmt(uitkomst.jaar))
+  detailRow('Fee percentage', fmtFeePct(uitkomst.feePct))
+
+  doc.setDrawColor(210, 210, 210)
+  doc.line(marginX, y, 547, y)
+  y += 24
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(13)
+  doc.text('Honorarium', marginX, y)
+  doc.text(fmt(uitkomst.fee), 500, y, { align: 'right' })
+  y += 28
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10)
+  doc.setTextColor(uitkomst.isGo ? 30 : 150, uitkomst.isGo ? 110 : 30, 30)
+  const verdictTekst = uitkomst.isGo
+    ? `Go — honorarium boven minimumdrempel van ${fmt(DREMPEL)}`
+    : `No-go — honorarium komt niet boven ${fmt(DREMPEL)}`
+  doc.text(verdictTekst, marginX, y)
+
+  const datumSlug = new Date().toISOString().slice(0, 10)
+  doc.save(`definitief-honorarium-${datumSlug}.pdf`)
 }
 
 export default function DefinitiefHonorarium() {
@@ -197,11 +266,24 @@ export default function DefinitiefHonorarium() {
         </div>
 
         {allesGevuld ? (
-          <div className={isGo ? 'verdict verdict-go' : 'verdict verdict-nogo'}>
-            {isGo
-              ? `Go — honorarium boven minimumdrempel van ${fmt(DREMPEL)}`
-              : `No-go — honorarium komt niet boven ${fmt(DREMPEL)}`}
-          </div>
+          <>
+            <div className={isGo ? 'verdict verdict-go' : 'verdict verdict-nogo'}>
+              {isGo
+                ? `Go — honorarium boven minimumdrempel van ${fmt(DREMPEL)}`
+                : `No-go — honorarium komt niet boven ${fmt(DREMPEL)}`}
+            </div>
+            <div className="print-bullhorn-row">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() =>
+                  printForBullhorn({ maand, periodes, vakAan, lease, bonusFractie, feePct, jaar, fee, isGo })
+                }
+              >
+                Print for Bullhorn
+              </button>
+            </div>
+          </>
         ) : (
           <div className="verdict verdict-idle">
             Vul de oranje velden in om het honorarium te berekenen
