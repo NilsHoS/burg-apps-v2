@@ -471,6 +471,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: var(--space-4);
+  align-items: start;
 }
 
 .featured-tool-card {
@@ -554,6 +555,7 @@ a.featured-tool-card:hover .tool-card-rule::after {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: var(--space-4);
+  align-items: start;
 }
 
 /* Horizontale rij met een blauwgrijs kleuraccent: het icoonvlak is al in
