@@ -433,9 +433,12 @@ create table plaatsingen (
 
 alter table plaatsingen enable row level security;
 
-create policy "iedereen leest plaatsingen"
+-- "using (true)" zonder auth.uid()-check zou dit voor de anon-rol
+-- (ongeauthenticeerd, via de publieke anon-sleutel) leesbaar maken — dat is
+-- hier bewust gesloten, in lijn met elke andere policy in dit schema.
+create policy "ingelogde gebruikers lezen plaatsingen"
   on plaatsingen for select
-  using (true);
+  using (auth.uid() is not null);
 
 create policy "hr/admin voegen plaatsingen toe"
   on plaatsingen for insert

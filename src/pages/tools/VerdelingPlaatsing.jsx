@@ -199,8 +199,20 @@ export default function VerdelingPlaatsing() {
   let body
   let uitkomst = null
 
+  // Een aanbetaling die de dealwaarde overschrijdt maakt totaalRestant
+  // negatief, wat vervolgens elk percentage-badge (die erdoor deelt) een
+  // onzinnig teken geeft — dus expliciet blokkeren i.p.v. door laten rekenen.
+  const aanbetalingTeHoog = aanbetaling > 0 && aanbetaling > deal
+
   if (!dealGevuld) {
     body = <div className="idle-state">Vul een dealwaarde in om de verdeling te berekenen</div>
+  } else if (aanbetalingTeHoog) {
+    body = (
+      <p className="form-error" role="alert">
+        De aanbetaling ({fmt(aanbetaling)}) is hoger dan de dealwaarde ({fmt(deal)}) — kies een lagere
+        aanbetaling of pas de dealwaarde aan.
+      </p>
+    )
   } else {
     // Bruto aandelen
     const salesBruto = deal * 0.3
@@ -458,6 +470,8 @@ export default function VerdelingPlaatsing() {
                       key={bedrag}
                       type="button"
                       className={aanbetalingBedrag === bedrag ? 'btn-group-btn active' : 'btn-group-btn'}
+                      disabled={dealGevuld && bedrag > deal}
+                      title={dealGevuld && bedrag > deal ? 'Hoger dan de dealwaarde' : undefined}
                       onClick={() => setAanbetalingBedrag(bedrag)}
                     >
                       {fmt(bedrag)}

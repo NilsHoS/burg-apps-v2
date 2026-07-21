@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { burgJobsSupabase } from '../../../lib/burgJobsClient'
 import { assignGoVacature } from './burgJobsHelpers'
 import { NOGO_REASONS, SOURCE_ORDER } from './constants'
@@ -32,6 +32,12 @@ export default function SwipenTab({
   const [descExpanded, setDescExpanded] = useState(false)
   const [nogoPopup, setNogoPopup] = useState(null) // job zolang de reden-popup open staat
   const [actionError, setActionError] = useState('')
+  // busy: blokkeert Go/No-go/Undo terwijl de vorige actie nog loopt. Een ref
+  // (i.p.v. alleen state) omdat een dubbelklik de tweede handler-aanroep kan
+  // laten lopen vóórdat React de state-update van de eerste heeft verwerkt —
+  // een ref is synchroon, dus sluit dat gat ook bij de snelste dubbelklik.
+  const busyRef = useRef(false)
+  const [busy, setBusy] = useState(false)
 
   // Nieuwe lading (initieel, of na bevestigen aanwezigheid) reset de
   // wachtrij + index/beslissingen — exact het effect van loadSwipe() opnieuw
@@ -43,6 +49,8 @@ export default function SwipenTab({
     setDescExpanded(false)
     setNogoPopup(null)
     setActionError('')
+    busyRef.current = false
+    setBusy(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [version])
 
@@ -60,29 +68,43 @@ export default function SwipenTab({
   const popupOpen = !!nogoPopup
 
   async function handleGo() {
-    if (!vac || popupOpen) return
+    if (!vac || popupOpen || busyRef.current) return
+    busyRef.current = true
+    setBusy(true)
     setDecisions((d) => [...d, { vac, action: 'go' }])
     setCurrent((c) => c + 1)
     setActionError('')
 
-    const { error: goError } = await assignGoVacature(vac.id, employees, currentUserEmail)
-    if (goError) setActionError('Opslaan van de Go-beslissing is mislukt: ' + goError.message)
-    onWentGo?.()
+    try {
+      const { error: goError } = await assignGoVacature(vac.id, employees, currentUserEmail)
+      if (goError) setActionError('Opslaan van de Go-beslissing is mislukt: ' + goError.message)
+      onWentGo?.()
+    } finally {
+      busyRef.current = false
+      setBusy(false)
+    }
   }
 
   async function handleNogo() {
-    if (!vac || popupOpen) return
+    if (!vac || popupOpen || busyRef.current) return
+    busyRef.current = true
+    setBusy(true)
     setDecisions((d) => [...d, { vac, action: 'nogo' }])
     setCurrent((c) => c + 1)
     setActionError('')
 
-    const { error: nogoError } = await burgJobsSupabase
-      .from('jobs')
-      .update({ review_status: 'nogo', reviewed_at: new Date().toISOString() })
-      .eq('id', vac.id)
-    if (nogoError) setActionError('Opslaan van de No-go-beslissing is mislukt: ' + nogoError.message)
+    try {
+      const { error: nogoError } = await burgJobsSupabase
+        .from('jobs')
+        .update({ review_status: 'nogo', reviewed_at: new Date().toISOString() })
+        .eq('id', vac.id)
+      if (nogoError) setActionError('Opslaan van de No-go-beslissing is mislukt: ' + nogoError.message)
 
-    setNogoPopup(vac)
+      setNogoPopup(vac)
+    } finally {
+      busyRef.current = false
+      setBusy(false)
+    }
   }
 
   function handleSkip() {
@@ -100,33 +122,41 @@ export default function SwipenTab({
   // Herbruikt door zowel de Undo-knop als "← Terug naar vacature" in de
   // no-go-popup (die laatste = `swBackFromNogo`, roept ook gewoon undo aan).
   async function undoLast() {
-    if (decisions.length === 0) return
+    if (decisions.length === 0 || busyRef.current) return
+    busyRef.current = true
+    setBusy(true)
+
     const last = decisions[decisions.length - 1]
     setDecisions((d) => d.slice(0, -1))
     setCurrent((c) => c - 1)
 
-    if (last.action === 'nogo') {
-      await burgJobsSupabase
-        .from('jobs')
-        .update({ review_status: 'pending', reviewed_at: null, nogo_reason: null })
-        .eq('id', last.vac.id)
-    } else if (last.action === 'go') {
-      // Let op: reviewed_at wordt hier bewust NIET teruggezet — dat doet de
-      // bron ook niet (asymmetrie t.o.v. de nogo-tak, exact zo overgenomen).
-      await burgJobsSupabase
-        .from('jobs')
-        .update({
-          review_status: 'pending',
-          assigned_to: currentUserEmail,
-          seniority_level: null,
-          seniority_reviewed_at: null,
-        })
-        .eq('id', last.vac.id)
+    try {
+      if (last.action === 'nogo') {
+        await burgJobsSupabase
+          .from('jobs')
+          .update({ review_status: 'pending', reviewed_at: null, nogo_reason: null })
+          .eq('id', last.vac.id)
+      } else if (last.action === 'go') {
+        // Let op: reviewed_at wordt hier bewust NIET teruggezet — dat doet de
+        // bron ook niet (asymmetrie t.o.v. de nogo-tak, exact zo overgenomen).
+        await burgJobsSupabase
+          .from('jobs')
+          .update({
+            review_status: 'pending',
+            assigned_to: currentUserEmail,
+            seniority_level: null,
+            seniority_reviewed_at: null,
+          })
+          .eq('id', last.vac.id)
+      }
+    } finally {
+      busyRef.current = false
+      setBusy(false)
     }
   }
 
   async function handleUndoClick() {
-    if (popupOpen) return
+    if (popupOpen || busyRef.current) return
     await undoLast()
   }
 
@@ -197,7 +227,7 @@ export default function SwipenTab({
                   type="button"
                   className="btn mo-swipe-btn-nogo"
                   onClick={handleNogo}
-                  disabled={popupOpen}
+                  disabled={popupOpen || busy}
                   title="No go"
                 >
                   ✕ No go
@@ -206,7 +236,7 @@ export default function SwipenTab({
                   type="button"
                   className="btn btn-ghost"
                   onClick={handleUndoClick}
-                  disabled={decisions.length === 0 || popupOpen}
+                  disabled={decisions.length === 0 || popupOpen || busy}
                   title="Ongedaan maken"
                 >
                   ↩ Undo
@@ -215,7 +245,7 @@ export default function SwipenTab({
                   type="button"
                   className="btn btn-secondary"
                   onClick={handleSkip}
-                  disabled={popupOpen}
+                  disabled={popupOpen || busy}
                   title="Later"
                 >
                   Later
@@ -224,7 +254,7 @@ export default function SwipenTab({
                   type="button"
                   className="btn mo-swipe-btn-go"
                   onClick={handleGo}
-                  disabled={popupOpen}
+                  disabled={popupOpen || busy}
                   title="Go"
                 >
                   ✓ Go

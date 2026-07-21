@@ -33,7 +33,7 @@ export default function GpbBeheerOverzicht({ beoordelingen, onVerversen, showToa
 
   useEffect(() => {
     fetchAllProfiles()
-      .then((data) => setProfiles([...data].sort((a, b) => a.naam.localeCompare(b.naam, 'nl'))))
+      .then((data) => setProfiles([...data].sort((a, b) => (a.naam || '').localeCompare(b.naam || '', 'nl'))))
       .catch((err) => console.error('[GpbBeheerOverzicht] Kon profielen niet laden:', err.message))
   }, [])
 
