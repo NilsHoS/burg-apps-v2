@@ -56,13 +56,14 @@ function ToolCard({ tool, unlocked, badgeAantal }) {
   if (!unlocked) {
     return (
       <div className="tool-card tool-card-locked" aria-disabled="true">
-        <span className="tool-card-lock" aria-hidden="true">
-          🔒
-        </span>
-        <span className="tool-card-name">{tool.naam}</span>
-        <span className="tool-card-hint">
-          Vereist rol: {roleLabel(tool.minimumRole)}
-        </span>
+        <div className="tool-card-icon" aria-hidden="true">
+          <span className="tool-card-lock">🔒</span>
+        </div>
+        <div className="tool-card-text">
+          <span className="tool-card-name">{tool.naam}</span>
+          <div className="tool-card-rule" />
+          <span className="tool-card-hint">Vereist rol: {roleLabel(tool.minimumRole)}</span>
+        </div>
       </div>
     )
   }
@@ -70,13 +71,18 @@ function ToolCard({ tool, unlocked, badgeAantal }) {
   return (
     <Link to={tool.path} className="tool-card">
       <div className="tool-card-icon">
-        <ToolIcon toolId={tool.id} size={17} />
+        <ToolIcon toolId={tool.id} size={19} />
       </div>
-      <span className="tool-card-name">
-        {tool.naam}
-        {badgeAantal > 0 && <span className="tool-card-badge">{badgeAantal}</span>}
-      </span>
-      <span className="tool-card-hint">Openen →</span>
+      <div className="tool-card-text">
+        <span className="tool-card-name">
+          {tool.naam}
+          {badgeAantal > 0 && <span className="tool-card-badge">{badgeAantal}</span>}
+        </span>
+        <div className="tool-card-rule" />
+        <span className="tool-card-hint">
+          Openen<span className="arrow">→</span>
+        </span>
+      </div>
     </Link>
   )
 }
